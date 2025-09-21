@@ -1,0 +1,32 @@
+{
+  "files": [
+    { "path": "SOP-AC-01_Access_Authorization_Procedure.md", "title": "SOP-AC-01 – Access Authorization Procedure" },
+    { "path": "SOP-AI-01_GenAI_LLM_Usage_Procedure.md", "title": "SOP-AI-01 – GenAI LLM Usage Procedure" },
+    { "path": "SOP-AI-02_Model_Lifecycle_Design_Training_and_Deployment.md", "title": "SOP-AI-02 – Model Lifecycle: Design, Training & Deployment" },
+    { "path": "SOP-AI-03_Prompt_Injection_Data_Leakage_Testing.md", "title": "SOP-AI-03 – Prompt Injection & Data Leakage Testing" },
+    { "path": "SOP-AI-04_Third-Party_AI_Service_Onboarding.md", "title": "SOP-AI-04 – Third-Party AI Service Onboarding" },
+    { "path": "SOP-AI-05_Model_Monitoring_Incident_Response.md", "title": "SOP-AI-05 – Model Monitoring & Incident Response" },
+    { "path": "SOP-AT-01_Security_Awareness_Training_Procedure.md", "title": "SOP-AT-01 – Security Awareness Training Procedure" },
+    { "path": "SOP-AU-01_Audit_Log_Review_Procedure.md", "title": "SOP-AU-01 – Audit Log Review Procedure" },
+    { "path": "SOP-CA-01_Security_Assessment_Continuous_Monitoring.md", "title": "SOP-CA-01 – Security Assessment & Continuous Monitoring" },
+    { "path": "SOP-CC-01_Chain_of_Custody_Logging.md", "title": "SOP-CC-01 – Chain of Custody Logging" },
+    { "path": "SOP-CM-01_Change_Management_Procedure.md", "title": "SOP-CM-01 – Change Management Procedure" },
+    { "path": "SOP-CT-01_Content_Transfer_Workflow.md", "title": "SOP-CT-01 – Content Transfer Workflow" },
+    { "path": "SOP-IA-01_Identity_Credential_Issuance_Procedure.md", "title": "SOP-IA-01 – Identity & Credential Issuance Procedure" },
+    { "path": "SOP-IR-01_Incident_Response_Workflow.md", "title": "SOP-IR-01 – Incident Response Workflow" },
+    { "path": "SOP-MA-01_System_Maintenance_Procedure.md", "title": "SOP-MA-01 – System Maintenance Procedure" },
+    { "path": "SOP-MD-01_Secure_Media_Asset_Destruction.md", "title": "SOP-MD-01 – Secure Media & Asset Destruction" },
+    { "path": "SOP-MP-01_Secure_Media_Handling_Procedure.md", "title": "SOP-MP-01 – Secure Media Handling Procedure" },
+    { "path": "SOP-NS-01_Network_Security_Procedure.md", "title": "SOP-NS-01 – Network Security Procedure" },
+    { "path": "SOP-NS-02_Data_I_O_Network_Segment_Procedure.md", "title": "SOP-NS-02 – Data I/O Network Segment Procedure" },
+    { "path": "SOP-PE-01_Visitor_Management_Procedure.md", "title": "SOP-PE-01 – Visitor Management Procedure" },
+    { "path": "SOP-PL-01_Security_Planning_Procedure.md", "title": "SOP-PL-01 – Security Planning Procedure" },
+    { "path": "SOP-PM-01_Business_Continuity_DR_Procedure.md", "title": "SOP-PM-01 – Business Continuity & DR Procedure" },
+    { "path": "SOP-PS-01_Onboarding_Offboarding_Procedure.md", "title": "SOP-PS-01 – Onboarding & Offboarding Procedure" },
+    { "path": "SOP-RA-01_Risk_Assessment_Workflow.md", "title": "SOP-RA-01 – Risk Assessment Workflow" },
+    { "path": "SOP-SA-01_Vendor_Security_Review_Procedure.md", "title": "SOP-SA-01 – Vendor Security Review Procedure" },
+    { "path": "SOP-SC-01_Firewall_Network_Security_Procedure.md", "title": "SOP-SC-01 – Firewall & Network Security Procedure" },
+    { "path": "SOP-SI-01_Malware_Patch_Management_Procedure.md", "title": "SOP-SI-01 – Malware & Patch Management Procedure" },
+    { "path": "SOP-SR-01_Supply_Chain_Security_Procedure.md", "title": "SOP-SR-01 – Supply Chain Security Procedure" }
+  ]
+}
