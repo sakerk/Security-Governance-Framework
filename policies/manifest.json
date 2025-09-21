@@ -1,0 +1,25 @@
+{
+  "files": [
+    { "path": "POL-AC-01_Access_Authorization_Policy.md", "title": "POL-AC-01 – Access Authorization Policy" },
+    { "path": "POL-AI-01_Responsible_AI_Model_Security_Policy.md", "title": "POL-AI-01 – Responsible AI Model Security Policy" },
+    { "path": "POL-AT-01_Awareness_and_Training_Policy.md", "title": "POL-AT-01 – Awareness and Training Policy" },
+    { "path": "POL-AU-01_Audit_and_Accountability_Policy.md", "title": "POL-AU-01 – Audit and Accountability Policy" },
+    { "path": "POL-CA-01_Security_Assessment_Monitoring_Policy.md", "title": "POL-CA-01 – Security Assessment Monitoring Policy" },
+    { "path": "POL-CM-01_Configuration_Management_Policy.md", "title": "POL-CM-01 – Configuration Management Policy" },
+    { "path": "POL-IA-01_Identification_and_Authentication_Policy.md", "title": "POL-IA-01 – Identification and Authentication Policy" },
+    { "path": "POL-IR-01_Incident_Response_Policy.md", "title": "POL-IR-01 – Incident Response Policy" },
+    { "path": "POL-MA-01_System_Maintenance_Policy.md", "title": "POL-MA-01 – System Maintenance Policy" },
+    { "path": "POL-MP-01_Media_Protection_Policy.md", "title": "POL-MP-01 – Media Protection Policy" },
+    { "path": "POL-NS-01_Network_Security_Policy.md", "title": "POL-NS-01 – Network Security Policy" },
+    { "path": "POL-NS-02_Data_IO_Network_Segment_Policy.md", "title": "POL-NS-02 – Data IO Network Segment Policy" },
+    { "path": "POL-PE-01_Physical_Security_Policy.md", "title": "POL-PE-01 – Physical Security Policy" },
+    { "path": "POL-PL-01_Security_Planning_Policy.md", "title": "POL-PL-01 – Security Planning Policy" },
+    { "path": "POL-PM-01_Program_Management_Policy.md", "title": "POL-PM-01 – Program Management Policy" },
+    { "path": "POL-PS-01_Personnel_Security_Policy.md", "title": "POL-PS-01 – Personnel Security Policy" },
+    { "path": "POL-RA-01_Risk_Assessment_Policy.md", "title": "POL-RA-01 – Risk Assessment Policy" },
+    { "path": "POL-SA-01_System_and_Services_Acquisition_Policy.md", "title": "POL-SA-01 – System and Services Acquisition Policy" },
+    { "path": "POL-SC-01_System_and_Communications_Protection_Policy.md", "title": "POL-SC-01 – System and Communications Protection Policy" },
+    { "path": "POL-SI-01_System_Integrity_Policy.md", "title": "POL-SI-01 – System Integrity Policy" },
+    { "path": "POL-SR-01_Supply_Chain_Risk_Management_Policy.md", "title": "POL-SR-01 – Supply Chain Risk Management Policy" }
+  ]
+}
