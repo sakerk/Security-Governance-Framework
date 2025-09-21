@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SGF Markdown Reader</title>
+  <link rel="icon" href="data:," />
+  <!-- Toast UI Editor (WYSIWYG Markdown editor) -->
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+  <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+  <!-- Marked for fast markdown rendering when in view-only mode -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- DOMPurify for safe HTML -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
+  <style>
+    :root{
+      --bg:#0f172a;         /* slate-900 */
+      --panel:#111827;      /* gray-900 */
+      --card:#0b1220;       /* deep */
+      --muted:#94a3b8;      /* slate-400 */
+      --text:#e5e7eb;       /* gray-200 */
+      --accent:#22d3ee;     /* cyan-400 */
+      --accent-2:#f59e0b;   /* amber-500 */
+      --border:#1f2937;     /* gray-800 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{ margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+    .app{display:grid; grid-template-columns: 300px 1fr; grid-template-rows: 56px 1fr; height:100%;}
+    header{grid-column:1/3; display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, #0b1220, #0b1220cc 60%, transparent); position:sticky; top:0; z-index:10}
+    header h1{font-size:16px; margin:0; letter-spacing:.3px}
+    header .meta{margin-left:auto; display:flex; gap:8px; align-items:center; color:var(--muted)}
+    .sidebar{border-right:1px solid var(--border); background:var(--panel); overflow:auto}
+    .main{position:relative; overflow:auto}
+    .toolbar{display:flex; gap:8px; padding:10px; border-bottom:1px solid var(--border); background:#0b1220}
+    button, .btn{appearance:none; border:1px solid var(--border); background:#0b1220; color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer}
+    button:hover{border-color:#2b394b}
+    .btn-accent{border-color:transparent; background:linear-gradient(90deg, var(--accent), #3b82f6); color:#001014; font-weight:600}
+    .btn-warning{border-color:transparent; background:linear-gradient(90deg, #fb923c, var(--accent-2)); color:#1a1000; font-weight:600}
+    .search{padding:10px}
+    .search input{width:100%; padding:9px 11px; border-radius:10px; border:1px solid var(--border); background:#0b1220; color:var(--text)}
+    details{border:1px solid var(--border); border-radius:12px; margin:10px; background:#0b1220}
+    summary{cursor:pointer; padding:10px 12px; color:var(--accent)}
+    ul.files{list-style:none; margin:0; padding:6px 8px 8px}
+    ul.files li{margin:0; padding:0}
+    ul.files a{display:flex; gap:8px; padding:8px 10px; border-radius:8px; color:inherit; text-decoration:none}
+    ul.files a:hover{background:#111a2a}
+    .file-active{background:#132033}
+    .viewer{padding:24px; max-width:1200px; margin-inline:auto}
+    .viewer .loading{opacity:.7; font-style:italic}
+    .status{padding:6px 10px; color:var(--muted)}
+    .path{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; color:#cbd5e1}
+    .editor-wrap{padding:0 16px 24px}
+    .hidden{display:none !important}
+    .split{display:grid; grid-template-columns:1fr;}
+    @media (min-width: 1100px){ .split{grid-template-columns: 1fr 1fr; gap:12px} }
+    .card{border:1px solid var(--border); border-radius:12px; background:#0b1220}
+    .card h3{margin:0; padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; color:var(--muted)}
+    .card .body{padding:12px}
+    .toastui-editor-contents{color:var(--text)}
+    .toastui-editor-defaultUI{border-color:var(--border) !important}
+    .toastui-editor-defaultUI-toolbar, .toastui-editor-defaultUI .te-mode-switch-section{background:#0b1220}
+    .toastui-editor-defaultUI .ProseMirror{background:#0b1220}
+    .toastui-editor-defaultUI .te-preview{background:#0b1220}
+    .help{padding:10px; font-size:12px; color:var(--muted)}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Security Governance Framework – Markdown Reader</h1>
+    <div class="meta">
+      <span id="currentFile" class="path">(no file selected)</span>
+      <span class="status" id="status"></span>
+    </div>
+  </header>
+
+  <!-- Sidebar / TOC (three sections) -->
+  <aside class="sidebar">
+    <div class="search"><input id="search" placeholder="Filter… (AC-01, IR-01, SOP, Evidence)" /></div>
+
+    <details open>
+      <summary>Policies (TOC)</summary>
+      <ul id="toc-policies" class="files"></ul>
+    </details>
+
+    <details>
+      <summary>Standards &amp; SOPs</summary>
+      <ul id="toc-sops" class="files"></ul>
+    </details>
+
+    <details>
+      <summary>Evidence</summary>
+      <ul id="toc-evidence" class="files"></ul>
+    </details>
+
+    <div class="help">
+      <div><strong>How it works</strong></div>
+      <ul>
+        <li>Place a <code>manifest.json</code> in each folder: <code>/policies</code>, <code>/standards_and_sops</code>, <code>/evidence</code>.</li>
+        <li>Each manifest lists <code>.md</code> files as <code>{ "path": "...md", "title": "Human Title" }</code>.</li>
+        <li>Click to view → <em>Edit</em> for WYSIWYG. <em>Save to Disk</em> downloads Markdown.</li>
+        <li>Links to <code>.md</code> open in a new tab (same editor UI).</li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+    <div class="toolbar">
+      <button id="btnView" class="btn">View</button>
+      <button id="btnEdit" class="btn-accent">Edit</button>
+      <button id="btnSave" class="btn-warning hidden">Save to Disk</button>
+      <button id="btnCancel" class="btn hidden">Cancel</button>
+    </div>
+
+    <section id="viewer" class="viewer"></section>
+
+    <section id="editorWrap" class="editor-wrap hidden">
+      <div class="split">
+        <div class="card">
+          <h3>WYSIWYG Editor</h3>
+          <div class="body"><div id="editor"></div></div>
+        </div>
+        <div class="card">
+          <h3>Live Preview</h3>
+          <div class="body"><div id="preview"></div></div>
+        </div>
+      </div>
+      <div class="help">Edits are in-memory until you <strong>Save to Disk</strong> (downloads a <code>.md</code>). Use your normal workflow for PRs, or the GitHub helper below.</div>
+
+      <div class="card" style="margin-top:12px">
+        <h3>Optional: GitHub Commit Helper</h3>
+        <div class="body">
+          <div class="muted">Provide a PAT with <code>repo</code> scope. Stored only in-memory.</div>
+          <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:8px; margin-top:10px">
+            <input id="ghOwner" placeholder="owner (e.g., zoicstudios)" />
+            <input id="ghRepo" placeholder="repo (e.g., sgf-site)" />
+            <input id="ghBranch" placeholder="branch (e.g., main)" />
+            <input id="ghPath" placeholder="path in repo (e.g., policies/AC-01.md)" />
+            <input id="ghToken" placeholder="GitHub PAT" type="password" />
+          </div>
+          <div style="margin-top:8px"><button id="btnCommit" class="btn">Commit to GitHub</button> <span class="muted" id="ghStatus"></span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // ---------- Config ----------
+  const MANIFESTS = {
+    policies: 'policies/manifest.json',
+    sops: 'standards_and_sops/manifest.json',
+    evidence: 'evidence/manifest.json'
+  };
+
+  // ---------- State ----------
+  let currentPath = null;     // e.g., 'policies/AC-01_...md'
+  let currentMarkdown = '';   // last loaded content
+  let editor = null;          // Toast UI Editor instance
+
+  // ---------- Helpers ----------
+  const el = sel => document.querySelector(sel);
+  const tocPoliciesEl = el('#toc-policies');
+  const tocSopsEl = el('#toc-sops');
+  const tocEvidenceEl = el('#toc-evidence');
+  const viewerEl = el('#viewer');
+  const editorWrapEl = el('#editorWrap');
+  const statusEl = el('#status');
+  const currentFileEl = el('#currentFile');
+
+  function setStatus(msg){ statusEl.textContent = msg || ''; }
+  function setCurrentFile(path){ currentFileEl.textContent = path ? path : '(no file selected)'; }
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+  function titleFromFilename(name){
+    return name
+      .replace(/_/g,' ')
+      .replace(/\.md$/i,'')
+      .replace(/\s+-\s+/g,' – ');
+  }
+
+  function applyMdLinkBehavior(container){
+    container.querySelectorAll('a[href$=".md"]').forEach(a => {
+      a.setAttribute('target','_blank');
+      const href = a.getAttribute('href');
+      if(!href.startsWith('http')){
+        const url = new URL(window.location.href);
+        url.searchParams.set('file', href.replace(/^\.\/?/,''));
+        a.href = url.toString();
+      }
+    });
+  }
+
+  async function fetchText(path){
+    const r = await fetch(path, {cache:'no-store'});
+    if(!r.ok) throw new Error(`Failed to fetch ${path}: ${r.status}`);
+    return await r.text();
+  }
+
+  function renderMarkdown(md){
+    const raw = marked.parse(md, { mangle:false, headerIds:true });
+    const safe = DOMPurify.sanitize(raw, {USE_PROFILES:{html:true}});
+    viewerEl.innerHTML = safe;
+    applyMdLinkBehavior(viewerEl);
+  }
+
+  function showViewer(){
+    viewerEl.classList.remove('hidden');
+    editorWrapEl.classList.add('hidden');
+    el('#btnSave').classList.add('hidden');
+    el('#btnCancel').classList.add('hidden');
+    el('#btnEdit').classList.remove('hidden');
+    el('#btnView').classList.add('hidden');
+  }
+
+  function showEditor(){
+    viewerEl.classList.add('hidden');
+    editorWrapEl.classList.remove('hidden');
+    el('#btnSave').classList.remove('hidden');
+    el('#btnCancel').classList.remove('hidden');
+    el('#btnEdit').classList.add('hidden');
+    el('#btnView').classList.remove('hidden');
+  }
+
+  function initEditor(md){
+    if(editor){ editor.destroy(); editor = null; }
+    editor = new toastui.Editor({
+      el: document.querySelector('#editor'),
+      height: '70vh',
+      initialEditType: 'wysiwyg',
+      previewStyle: 'vertical',
+      usageStatistics: false,
+      initialValue: md || ''
+    });
+    const updatePreview = () => {
+      const markdown = editor.getMarkdown();
+      const raw = marked.parse(markdown, { mangle:false, headerIds:true });
+      el('#preview').innerHTML = DOMPurify.sanitize(raw);
+    };
+    editor.on('change', updatePreview);
+    updatePreview();
+  }
+
+  function download(filename, text){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type:'text/markdown'}));
+    a.download = filename;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  }
+
+  function filenameFromPath(p){ return p.split('/').pop(); }
+
+  async function loadFile(path){
+    try{
+      setStatus('Loading...');
+      const md = await fetchText(path);
+      currentPath = path;
+      currentMarkdown = md;
+      setCurrentFile(path);
+      renderMarkdown(md);
+      highlightActive(path);
+      setStatus('');
+      showViewer();
+    }catch(err){
+      console.error(err);
+      viewerEl.innerHTML = `<div class="loading">${(String(err)).replace(/</g,'&lt;')}</div>`;
+      setStatus('Error');
+    }
+  }
+
+  function highlightActive(path){
+    [tocPoliciesEl, tocSopsEl, tocEvidenceEl].forEach(list => {
+      if(!list) return;
+      list.querySelectorAll('a').forEach(a=>a.classList.remove('file-active'));
+      const link = list.querySelector(`a[data-path="${CSS.escape(path)}"]`);
+      if(link) link.classList.add('file-active');
+    });
+  }
+
+  async function buildTOC(){
+    const buildTOCFor = async (listEl, manifestUrl, base) => {
+      try{
+        const manifest = await (await fetch(manifestUrl, {cache:'no-store'})).json();
+        const files = manifest.files || [];
+        const frag = document.createDocumentFragment();
+        files.forEach(file => {
+          const path = `${base}/${file.path || file}`;
+          const title = file.title || titleFromFilename(path.split('/').pop());
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = '#';
+          a.dataset.path = path;
+          a.innerHTML = `<span>📄</span><span>${title.replace(/</g,'&lt;')}</span>`;
+          a.addEventListener('click', (e)=>{ e.preventDefault(); loadFile(path); });
+          li.appendChild(a);
+          frag.appendChild(li);
+        });
+        listEl.innerHTML = '';
+        listEl.appendChild(frag);
+      }catch(err){
+        listEl.innerHTML = `<li class="muted">No manifest at <code>${manifestUrl}</code>.</li>`;
+      }
+    };
+
+    await Promise.all([
+      buildTOCFor(tocPoliciesEl, MANIFESTS.policies, 'policies'),
+      buildTOCFor(tocSopsEl, MANIFESTS.sops, 'standards_and_sops'),
+      buildTOCFor(tocEvidenceEl, MANIFESTS.evidence, 'evidence')
+    ]);
+  }
+
+  function filterTOC(q){
+    const needle = q.trim().toLowerCase();
+    [tocPoliciesEl, tocSopsEl, tocEvidenceEl].forEach(list => {
+      if(!list) return;
+      list.querySelectorAll('li').forEach(li => {
+        const text = li.textContent.toLowerCase();
+        li.style.display = text.includes(needle) ? '' : 'none';
+      });
+    });
+  }
+
+  async function commitToGitHub(){
+    const owner = el('#ghOwner').value.trim();
+    const repo = el('#ghRepo').value.trim();
+    const branch = el('#ghBranch').value.trim() || 'main';
+    const path = el('#ghPath').value.trim() || (currentPath || '').replace(/^\//,'');
+    const token = el('#ghToken').value.trim();
+    const out = el('#ghStatus');
+
+    if(!owner || !repo || !path || !token){ out.textContent = 'Missing field(s).'; return; }
+
+    try{
+      out.textContent = 'Preparing...';
+      const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`;
+      let sha = undefined;
+      let exists = false;
+      const getRes = await fetch(getUrl, { headers:{ Authorization:`Bearer ${token}`, Accept:'application/vnd.github+json' } });
+      if(getRes.status === 200){
+        const j = await getRes.json(); sha = j.sha; exists = true;
+      }
+
+      const content = btoa(unescape(encodeURIComponent(editor ? editor.getMarkdown() : currentMarkdown)));
+      const putRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`, {
+        method:'PUT',
+        headers:{ 'Authorization':`Bearer ${token}`, 'Accept':'application/vnd.github+json' },
+        body: JSON.stringify({ message: `${exists? 'update':'create'} ${path}`, content, branch, sha })
+      });
+      if(!putRes.ok){ throw new Error(`GitHub error: ${putRes.status}`); }
+      out.textContent = 'Committed ✅';
+    }catch(e){
+      console.error(e); out.textContent = `Failed: ${e.message}`;
+    }
+  }
+
+  // ---------- Events ----------
+  el('#btnEdit').addEventListener('click', ()=>{ initEditor(currentMarkdown); showEditor(); });
+  el('#btnView').addEventListener('click', ()=>{ renderMarkdown(editor.getMarkdown()); showViewer(); });
+  el('#btnSave').addEventListener('click', ()=>{
+    const md = editor ? editor.getMarkdown() : currentMarkdown;
+    const name = filenameFromPath(currentPath || 'Document.md');
+    download(name, md);
+  });
+  el('#btnCancel').addEventListener('click', ()=>{ showViewer(); });
+  el('#btnCommit').addEventListener('click', commitToGitHub);
+  el('#search').addEventListener('input', e => filterTOC(e.target.value));
+
+  // ---------- Init ----------
+  (async function(){
+    await buildTOC();
+
+    // If ?file= is present, load it; otherwise try the first from any section
+    const url = new URL(window.location.href);
+    const fileParam = url.searchParams.get('file');
+    if(fileParam){
+      const safe = fileParam.replace(/^\/?/, '');
+      await loadFile(safe);
+    } else {
+      const first = (tocPoliciesEl.querySelector('a[data-path]') || tocSopsEl.querySelector('a[data-path]') || tocEvidenceEl.querySelector('a[data-path]'));
+      if(first){ first.click(); }
+    }
+
+    viewerEl.addEventListener('click', (e)=>{
+      const a = e.target.closest('a');
+      if(a && a.getAttribute('href') && a.getAttribute('href').endsWith('.md')){
+        a.setAttribute('target','_blank');
+        const href = a.getAttribute('href');
+        if(!href.startsWith('http')){
+          const url2 = new URL(window.location.href);
+          url2.searchParams.set('file', href.replace(/^\.\/?/,''));
+          a.href = url2.toString();
+        }
+      }
+    });
+  })();
+</script>
+</body>
+</html>
