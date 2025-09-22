@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-2.1 | Technical Security | Network Security | Point-to-Point Connections | Establish and regularly review a process to secure any Point-to-Point Connections, to include the following:<br>• Use and encrypt communication over private connections (e.g., dark fiber, leased lines, MPLS, etc.)<br>• Encrypt using AES-256 with TLS 1.2 at a minimum<br>• Document all Point-to-Point Connections (e.g., VPN, private fiber, etc.) | • If using a public network or a connection over the Internet, encrypt using VPN<br>• Regularly review Point-to-Point Connections |

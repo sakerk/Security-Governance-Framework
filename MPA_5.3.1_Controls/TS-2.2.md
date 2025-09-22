@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-2.2 | Technical Security | Network Security | Network Topology Diagram | Create a Network Infrastructure and Topology diagram, to include the following:<br>• Network segments (e.g., internal, DMZ, Data I/O, etc.)<br>• Access to the Internet and boundary controls<br>• Network path for client content data<br>• Remote-accessible network segments<br>• Update upon significant changes | • Include WAN, DMZ, LAN, WLAN, VLAN, firewalls, switches, endpoints, etc. |

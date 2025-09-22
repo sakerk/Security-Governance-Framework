@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-2.7 | Technical Security | Network Security | Intrusion Detection & Prevention Systems | Establish and regularly review a policy and process to deploy network-based Intrusion Detection & Prevention Systems (IDS & IPS), to include the following:<br>• Configure the systems to alert and block suspicious network activity<br>• Basic border gateway services (e.g., gateway anti-virus, URL filtering, etc.)<br>• Regularly update attack signature definitions<br>• Log all activity and configuration changes | • Host-based Intrusion Detection Systems<br>• Utilize virtual patching |

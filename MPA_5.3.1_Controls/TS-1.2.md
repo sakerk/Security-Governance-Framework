@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-1.2 | Technical Security | Information Systems | Default Accounts | Establish and regularly review a process for all Default Accounts (e.g., admin, infrastructure, applications, etc.), to include the following:<br>• Identify all Default Accounts<br>• Change passwords or passphrases<br>• Change usernames <br>• For applications, allow for deletion and removal of application Default Accounts | • Limit the use of Default Accounts to special situations as required (e.g., operating system updates, patch installations, software updates, etc.) |

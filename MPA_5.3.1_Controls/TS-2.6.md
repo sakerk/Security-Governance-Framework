@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-2.6 | Technical Security | Network Security | Firewall Management | Establish and regularly review a policy and process for Firewall Management, to include the following:<br>• Provision firewall users based on the Principle of Least Privilege (PoLP)<br>• Apply Change Control Best Practices (TS-5.0)<br>• Restrict Firewall Management from the Internet or WAN<br>• Subscription to anti-virus, sandbox, and intrusion detection updates<br>• Configure alerts for key security events | • Regularly review role access<br>• Regularly review alert configuration<br>• Update upon changes |

@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| OR-3.0 | Organizational Security | Personnel Security | Background Screening | Establish and regularly review a policy and process for Background Screening on all relevant full- and part-time employees, consultants, contractors, and interns, to include the following:<br>• In accordance with local laws, regulations, agreements, and cultural considerations<br>• Retain all signed agreements and results | • Apply to freelancers and temporary workers<br>• Use a third-party background screening company |

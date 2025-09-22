@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| OR-1.4 | Organizational Security | Policies & Procedures | Data & Assets | Establish and regularly review a policy and process for Data & Assets, to include the following:<br>• Classification<br>• Protection<br>• Database security guidelines<br>• Defined segregation of duties<br>• Handling throughout data life cycle<br>• In accordance with local laws, regulations, and agreements<br><br> | • Data retention periods<br>• Classification according to data sensitivity <br>• Third-party Service Provider data sharing responsibilities (e.g., via contract clauses, etc.)<br>• Version control of the policy and process |

@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| PS-1.3 | Physical Security | Access Control | Electronic Access Control Logging & Monitoring | Establish and regularly review a process for Electronic Access Control Logging & Monitoring, to include the following:<br>• System enabled logging<br>• Retain logs for one year at a minimum, or the maximum time allowed, in accordance with local laws, regulations, and agreements | • Automated alerts for suspicious or unusual events for restricted areas<br>• Escalation procedures to appropriate personnel<br>• Regularly review logs for discrepancies |

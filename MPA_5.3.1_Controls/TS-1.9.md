@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-1.9 | Technical Security | Information Systems | Corporate Email Filtering | Establish and regularly review a process for Corporate Email Filtering to detect, report, and block the following: <br>• Phishing emails<br>• Malware and ransomware<br>• Transmission of sensitive asset/content material<br>• Executable file attachments | • Incorporate into Incident Response (OR-4.0) process for reporting<br>• Apply SPF, DKIM, and DMARC records on the domains<br>• Set DMARC policy set to REJECT |

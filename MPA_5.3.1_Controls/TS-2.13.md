@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-2.13 | Technical Security | Network Security | Network Connections | Establish and regularly review a process to monitor, encrypt, and restrict Network Connections to only authenticated and authorized connections, to include the following:<br>• Detect unauthorized connections<br>• Remove unauthorized connections | • Log all unauthorized connections in log management system<br>• Regularly review Network Connections for number of unauthorized connections, how they were removed, trends, patterns, etc. |

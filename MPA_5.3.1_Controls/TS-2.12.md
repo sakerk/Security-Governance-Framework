@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-2.12 | Technical Security | Network Security | Cloud Service Provider & Cloud Service Consumer | Establish and regularly review a process for configuring applications and infrastructure for Cloud Service Providers (CSPs) & Cloud Service Consumers (CSCs), to include the following:<br>• Define user and intra-tenant user access<br>• Segregate access through appropriate physical or logical controls | • In accordance with local laws, regulations, and agreements<br>• Monitor segmentation between intra-tenant access |

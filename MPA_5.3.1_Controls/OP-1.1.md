@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| OP-1.1 | Operational Security | Logistics | Packaging | Establish and regularly review a Packaging process to package assets in accordance with local laws, regulations, and agreements. | • Monitor the on-site packaging and loading of content<br>• Secure containers depending on asset value (e.g., case with a combination lock)<br>• Utilize tamper-evident tape, packaging, and/or seals<br>• Labels only include address, barcode, aliases (i.e., non-descript) |

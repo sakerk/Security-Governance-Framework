@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| OP-1.3 | Operational Security | Logistics | Transport Vehicles | Establish and regularly review a process for Transport Vehicles handling assets, to include the following:<br>• Always lock the vehicle<br>• Handling during loading and unloading<br>• Verify packages are out of view<br>• Direct delivery without unnecessary stops<br>• Third-party couriers | • Theft insurance when transporting sensitive assets or per client requirements<br>• Restrict courier access into high-security areas<br> |

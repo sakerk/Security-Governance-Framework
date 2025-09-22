@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-1.14 | Technical Security | Information Systems | Security by Design & Privacy by Design | Incorporate the principles of Security by Design (SbD) and Privacy by Design (PbD) into system and application development, to include the following:<br>• Data protection and privacy requirements are included by default across development life cycle<br>• In accordance with local laws, regulations, and agreements<br> | • Design documentation to describe how data is protected<br>• Utilize Data Loss Prevention (DLP) tools |

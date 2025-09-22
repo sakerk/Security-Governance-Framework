@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| PS-2.0 | Physical Security | Personnel Security | Replication Facilities | Establish and regularly review a policy and process for Replication Facilities, to include the following:<br>• Perform searches of persons, bags, packages, and personal belongings for content/assets<br>• Perform searches at key entry/exit points<br>• Regular audit to test validity of process<br>• In accordance with local laws, regulations, and agreements | • Restrict recording/storage devices (e.g., USB thumb drives, digital cameras, cell phones, etc.) in high-security areas<br>• Use transparent bags and containers<br>• Document any incidents that occur |

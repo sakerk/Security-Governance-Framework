@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-1.12 | Technical Security | Information Systems | Cloud Misconfigurations | Establish and regularly review a process for the detection and correction of Cloud Misconfigurations, to include the following:<br>• Proactive alerts<br>• Appropriate role(s) for reviewing and correcting misconfigurations<br>• A configuration and management tool<br>• Investigate and have a remediation plan for misconfigurations<br>• Update documentation upon infrastructure changes | • Investigate and have a remediation plan for critical misconfigurations within 48 hours<br>• Utilize scanning tools to detect misconfigurations |

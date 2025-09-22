@@ -1,0 +1,3 @@
+| Control No. | Domain | Topic | Title in TPN+ | BEST PRACTICES: | ADDITIONAL RECOMMENDATIONS: |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| TS-7.1 | Technical Security | Artificial Intelligence & Machine Learning | AI/ML - Application Configuration Guidelines | For Artificial Intelligence & Machine Learning (AI/ML) applications, source and apply secure Application Configuration Guidelines provided by the licensor to configure applications used on configured corporate systems, to include the following:<br>• Apply to host and guest OS<br>• Administer application-level encryption and access control for sensitive user data | • Complete a model card or equivalent for each AI/ML application in use |
