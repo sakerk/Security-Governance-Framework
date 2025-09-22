@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MPA 5.3.1 Control List</title>
+  <title>Tool Disclosure List</title>
   <style>
     :root {
       --bg:#0b0f14; --panel:#0f172a; --muted:#93a1b1; --text:#e6edf3; --line:#1f2937;
@@ -28,19 +28,18 @@
       border:1px solid #263241; background:#0b1220; color:var(--text);
     }
     .count { font-size:12px; color:var(--muted); white-space:nowrap; }
-    .exportWrap, .columnsWrap { display:flex; gap:8px; align-items:center; position:relative; }
+    .exportWrap, .columnsWrap, .modeWrap { display:flex; gap:8px; align-items:center; position:relative; }
     .select, .btn {
       appearance:none; border:1px solid #27415f; background:#0f213c; color:#dbeafe;
       padding:10px 12px; border-radius:12px; cursor:pointer;
     }
     .btn:hover { background:#15325d; }
     .btn.primary { background:#13305a; border-color:#2d4c7b; }
-    .btn.danger { background:#3a0f14; border-color:#5a1f25; }
     .select { min-width:150px; }
     .colsBtn { white-space:nowrap; }
     .colsPanel {
       display:none; position:absolute; top:42px; right:0; z-index:30;
-      min-width:240px; max-height:60vh; overflow:auto;
+      min-width:260px; max-height:60vh; overflow:auto;
       background:#0b1220; border:1px solid #263241; border-radius:12px; padding:10px;
       box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
@@ -53,13 +52,16 @@
     }
     table { width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
     th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
-    thead th { position:sticky; top:0; background:#0f172a; z-index:1; }
+    td { white-space:pre-wrap; } /* show numbered multi-lines */
+    thead th { position:sticky; top:0; background:#0f172a; z-index:1; user-select:none; }
+    thead th.dragging { opacity:.6; }
     tbody tr.hide { display:none; }
     tbody tr.selected td { background:var(--sel); }
     tbody tr:hover td { background:var(--hover); }
     tbody tr.selected:hover td { background:var(--sel); }
     th.selCol, td.selCol { width:44px; min-width:44px; max-width:44px; text-align:center; }
     input[type="checkbox"]{ width:16px; height:16px; cursor:pointer; }
+    /* Column resizer handle */
     .resizer {
       position:absolute; top:0; right:-4px; width:8px; height:100%;
       cursor:col-resize; user-select:none;
@@ -67,7 +69,8 @@
       opacity:.3;
     }
     th { position:sticky; top:0; background:#0f172a; }
-    th .headerInner { position:relative; display:block; padding-right:10px; }
+    th .headerInner { position:relative; display:flex; gap:6px; align-items:center; padding-right:10px; cursor:pointer; }
+    .sortIndicator { font-size:12px; color:#9aa6b2; }
     .hide-col { display:none !important; }
     @media (max-width:900px){
       .title { display:none; }
@@ -93,25 +96,41 @@
       .modal .grid { grid-template-columns: 1fr; }
       .modal label { padding-top:0; }
     }
+    /* Segmented toggle */
+    .seg { display:inline-flex; border:1px solid #27415f; border-radius:12px; overflow:hidden; }
+    .seg button { border:0; background:#0f213c; color:#dbeafe; padding:8px 12px; cursor:pointer; }
+    .seg button.active { background:#13305a; }
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <h1 id="pageTitle" class="title">Tool Disclosure List</h1>
+
+      <div class="modeWrap" title="Choose file type to view/save">
+        <div class="seg" role="tablist" aria-label="View mode">
+          <button id="modeMd"   role="tab" aria-selected="true">Markdown</button>
+          <button id="modeJson" role="tab" aria-selected="false">JSON</button>
+        </div>
+      </div>
+
       <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search table" />
+
       <div class="columnsWrap">
         <button id="colsBtn" class="btn colsBtn">Columns ▾</button>
         <div id="colsPanel" class="colsPanel" role="dialog" aria-label="Toggle columns"></div>
       </div>
+
       <div class="exportWrap">
         <button id="addBtn" class="btn primary">+ Add Row</button>
         <select id="fmt" class="select" aria-label="Export format">
           <option value="md">Markdown (.md)</option>
           <option value="csv">CSV (.csv)</option>
+          <option value="json">JSON (.json)</option>
         </select>
         <button id="exportBtn" class="btn">Export</button>
       </div>
+
       <div class="spacer"></div>
       <span id="count" class="count" aria-live="polite"></span>
     </header>
@@ -151,12 +170,15 @@
   <script>
     // ---- Config ----
     const GH_OWNER  = "sakerk";                  // CHANGE if needed
-    const GH_REPO   = "Security-Governance-Framework"; // CHANGE if needed
+    const GH_REPO   = "AI-Tool-Disclosure-List"; // CHANGE if needed
     const GH_BRANCH = "main";                    // 'main' or 'gh-pages'
-    const DATA_DIR  = "MPA_5.3.1_Controls";                    // folder with per-row .md files
+    const DATA_DIR  = "data";                    // folder with per-row files
 
     // Optional: personal access token (contents:write). Stored locally.
     let GH_TOKEN = localStorage.getItem("ghToken") || "";
+
+    // Modes: 'md' or 'json' (persisted)
+    let VIEW_MODE = localStorage.getItem("viewMode") || "md";
 
     const DEFAULT_HEADERS = [
       "Tool Name","License Type","Tool Type","Tool Category","Hosting Model",
@@ -170,6 +192,7 @@
     let COL_VISIBLE = [];
     let COL_WIDTHS = [];
     let INDEX_ROWS = [];
+    let SORT_COL = -1, SORT_DIR = 1; // 1 = asc, -1 = desc
 
     // ---- GitHub helpers ----
     function ghContentsUrl(dir){
@@ -180,19 +203,17 @@
     }
 
     // READ: prefer unauthenticated; if that fails and a token exists, retry with auth.
-    async function listMarkdownFiles(){
-      const url = ghContentsUrl(DATA_DIR);
-      let res = await fetch(url); // unauth first
+    async function ghList(dir){
+      const url = ghContentsUrl(dir);
+      let res = await fetch(url);
       if(!res.ok && GH_TOKEN){
         res = await fetch(url, { headers: { "Authorization": "Bearer " + GH_TOKEN } });
       }
       if(!res.ok) throw new Error("GitHub list error " + res.status);
-      const items = await res.json();
-      return items.filter(it => it.type === "file" && /\.md$/i.test(it.name))
-                  .sort((a,b)=>a.name.localeCompare(b.name));
+      return res.json();
     }
     async function fetchText(url){
-      let res = await fetch(url); // unauth raw
+      let res = await fetch(url);
       if(!res.ok && GH_TOKEN){
         res = await fetch(url, { headers: { "Authorization": "Bearer " + GH_TOKEN } });
       }
@@ -231,7 +252,7 @@
       return res.json();
     }
 
-    // ---- Markdown parsing ----
+    // ---- MD parsing ----
     function splitCells(line){
       let s = line.trim();
       s = s.replace(/^\|/, "").replace(/\|$/, "");
@@ -268,6 +289,51 @@
       return null;
     }
 
+    // ---- JSON parsing/flattening ----
+    function isPlainObject(v){ return v && typeof v === 'object' && !Array.isArray(v); }
+
+    function cleanBulletLines(text){
+      if(text == null) return "";
+      const raw = String(text);
+      const lines = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if(lines.length <= 1) return raw.trim();
+      const cleaned = lines.map(l => {
+        return l
+          .replace(/^[-*•–—]\s+/, "")           // bullets
+          .replace(/^\d+[\.\)]\s+/, "")         // 1. or 1)
+          .replace(/^\(\d+\)\s+/, "")           // (1)
+          .replace(/^- \[[ xX]\]\s+/, "");      // task list
+      });
+      return cleaned.map((l,i)=> `${i+1}. ${l}`).join("\n");
+    }
+
+    // Flatten JSON: bring top-level scalars; for nested object named "data", copy its keys up;
+    // for any other nested objects, use dot paths "parent.child".
+    function flattenJson(obj){
+      const out = {};
+      for(const [k,v] of Object.entries(obj || {})){
+        if(isPlainObject(v)){
+          if(k.toLowerCase() === "data"){
+            for(const [k2, v2] of Object.entries(v)){
+              out[k2] = cleanBulletLines(v2);
+            }
+          } else {
+            for(const [k2, v2] of Object.entries(v)){
+              out[`${k}.${k2}`] = cleanBulletLines(
+                isPlainObject(v2) ? JSON.stringify(v2) :
+                Array.isArray(v2) ? v2.join("\n") : v2
+              );
+            }
+          }
+        } else if(Array.isArray(v)){
+          out[k] = cleanBulletLines(v.join("\n"));
+        } else {
+          out[k] = cleanBulletLines(v);
+        }
+      }
+      return out;
+    }
+
     // ---- Rendering ----
     function renderTable(headers, rows){
       const tbl = document.getElementById("sheet");
@@ -282,6 +348,7 @@
       const thead = document.createElement("thead");
       const trh = document.createElement("tr");
 
+      // Select all
       const thSel = document.createElement("th");
       thSel.className = "selCol";
       const master = document.createElement("input");
@@ -291,18 +358,41 @@
       thSel.appendChild(master);
       trh.appendChild(thSel);
 
+      // Headers (drag, sort, resize)
       headers.forEach((h, i) => {
         const th = document.createElement("th");
+        th.draggable = true;
         th.dataset.col = String(i);
+
         const span = document.createElement("span");
         span.className = "headerInner";
         span.textContent = h || ("Column " + (i+1));
+        span.addEventListener("click", () => onSortClick(i));
         th.appendChild(span);
+
+        const si = document.createElement("span");
+        si.className = "sortIndicator";
+        si.textContent = (SORT_COL === i ? (SORT_DIR === 1 ? "▲" : "▼") : "");
+        span.appendChild(si);
+
         const handle = document.createElement("div");
         handle.className = "resizer";
         handle.addEventListener("mousedown", startResize.bind(null, i));
         handle.addEventListener("dblclick", autoFitColumn.bind(null, i));
         th.appendChild(handle);
+
+        // Drag events
+        th.addEventListener("dragstart", (ev)=>{ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain", i); });
+        th.addEventListener("dragend", ()=> th.classList.remove("dragging"));
+        th.addEventListener("dragover", (ev)=> ev.preventDefault());
+        th.addEventListener("drop", (ev)=> {
+          ev.preventDefault();
+          const from = parseInt(ev.dataTransfer.getData("text/plain"),10);
+          const to = i;
+          if(!Number.isInteger(from) || from===to) return;
+          reorderColumns(from, to);
+        });
+
         trh.appendChild(th);
 
         const c = document.createElement("col");
@@ -343,6 +433,41 @@
       applyColumnWidths();
       buildIndexRows();
       updateCounts();
+    }
+
+    function onSortClick(i){
+      if(SORT_COL === i) { SORT_DIR = -SORT_DIR; }
+      else { SORT_COL = i; SORT_DIR = 1; }
+      // Clear selection on sort to avoid index confusion
+      SELECTED.clear();
+      ROWS.sort((a,b) => {
+        const va = (a[i] ?? "").toString().toLowerCase();
+        const vb = (b[i] ?? "").toString().toLowerCase();
+        if(va < vb) return -1 * SORT_DIR;
+        if(va > vb) return  1 * SORT_DIR;
+        return 0;
+      });
+      renderTable(HEADERS, ROWS);
+    }
+
+    function reorderColumns(from, to){
+      // Move metadata arrays
+      const move = (arr) => {
+        const x = arr.splice(from,1)[0];
+        arr.splice(to,0,x);
+      };
+      move(HEADERS);
+      move(COL_VISIBLE);
+      move(COL_WIDTHS);
+      // Move each row's cell
+      ROWS = ROWS.map(r => {
+        const x = r.slice();
+        const cell = x.splice(from,1)[0];
+        x.splice(to,0,cell);
+        return x;
+      });
+      renderTable(HEADERS, ROWS);
+      buildColumnsPanel();
     }
 
     function applyColumnVisibility(){
@@ -480,7 +605,7 @@
       });
       const note = document.createElement("div");
       note.className = "note";
-      note.textContent = "Tip: Double-click a header’s right edge to auto-fit. Drag to resize.";
+      note.textContent = "Tip: Drag headers to reorder. Click to sort. Double-click right edge to auto-fit.";
       panel.appendChild(note);
     }
     function setupColumnsUI(){
@@ -514,6 +639,14 @@
       }
       const all = [headers, ...rows];
       return all.map(r => r.map(esc).join(",")).join("\r\n") + "\r\n";
+    }
+    function toJSONArray(headers, rows){
+      // preserve visible column order by inserting keys in that order
+      return rows.map(r => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = r[i] ?? ""; });
+        return obj;
+      });
     }
     function downloadFile(filename, text, mime){
       const blob = new Blob([text], {type: mime});
@@ -590,34 +723,55 @@
         const el = document.getElementById('col_'+i);
         return el ? el.value.trim() : '';
       });
-      const md = toMarkdown(HEADERS, [values], ""); // per-row file contains just the table (no H1)
 
-      // SLUG FORMAT: /data/<tool-name>-<timestamp>.md
-      const toolName = (values[0] || "row").toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-      const ts = new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14);
-      const path = `${DATA_DIR}/${toolName || 'row'}-${ts}.md`;
+      let path, content, message;
+
+      if(VIEW_MODE === "json"){
+        // Save one JSON object with keys in visible order
+        const obj = {};
+        HEADERS.forEach((h, i) => { obj[h] = values[i] ?? ""; });
+        const firstCol = values[0] || "row";
+        const toolSlug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+        const ts = new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14);
+        path = `${DATA_DIR}/${toolSlug || 'row'}-${ts}.json`;
+        content = JSON.stringify(obj, null, 2) + "\n";
+        message = `Add JSON row: ${firstCol}`;
+      } else {
+        // Markdown single-row table
+        const md = toMarkdown(HEADERS, [values], "");
+        const firstCol = values[0] || "row";
+        const toolSlug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+        const ts = new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14);
+        path = `${DATA_DIR}/${toolSlug || 'row'}-${ts}.md`;
+        content = md;
+        message = `Add MD row: ${firstCol}`;
+      }
 
       try{
         setStatus('Saving…');
-        await createFileInRepo(path, md, `Add tool row: ${values[0] || 'New Entry'}`);
+        await createFileInRepo(path, content, message);
         ROWS.push(values);     // optimistic update
         renderTable(HEADERS, ROWS);
         setStatus('Saved', true);
         setTimeout(closeAddModal, 400);
       }catch(err){
         console.warn('Write to GitHub failed or cancelled:', err);
-        downloadFile(path.split('/').pop(), md, 'text/markdown'); // fallback
+        const fname = path.split('/').pop();
+        const mime = VIEW_MODE === "json" ? "application/json" : "text/markdown";
+        downloadFile(fname, content, mime); // fallback
         setStatus('Downloaded (add to repo /data manually)', true);
       }
     });
 
-    // ---- Load all .md rows from /data ----
-    async function loadAll(){
-      const list = await listMarkdownFiles();
-      const files = list.map(it => ({ name: it.name, url: it.download_url || ghRawUrl(`${DATA_DIR}/${it.name}`) }));
+    // ---- Loaders ----
+    async function loadMd(){
+      const items = await ghList(DATA_DIR);
+      const files = items.filter(it => it.type === "file" && /\.md$/i.test(it.name))
+                         .sort((a,b)=>a.name.localeCompare(b.name))
+                         .map(it => ({ name: it.name, url: it.download_url || ghRawUrl(`${DATA_DIR}/${it.name}`) }));
       const countEl = document.getElementById("count");
-      ROWS = [];
-      HEADERS = [];
+      ROWS = []; HEADERS = []; SELECTED.clear(); SORT_COL = -1;
+
       countEl.textContent = "Loading…";
       for(let i=0;i<files.length;i++){
         const {name, url} = files[i];
@@ -637,7 +791,7 @@
           }
           countEl.textContent = `Loading… ${i+1}/${files.length}`;
         }catch(e){
-          console.warn("Skipping file due to error", name, e);
+          console.warn("Skipping MD due to error", name, e);
         }
       }
       if(HEADERS.length === 0) HEADERS = DEFAULT_HEADERS.slice();
@@ -647,7 +801,79 @@
       setupSearch();
     }
 
-    // ---- Export ----
+    async function loadJson(){
+      const items = await ghList(DATA_DIR);
+      const files = items.filter(it => it.type === "file" && /\.json$/i.test(it.name))
+                         .sort((a,b)=>a.name.localeCompare(b.name))
+                         .map(it => ({ name: it.name, url: it.download_url || ghRawUrl(`${DATA_DIR}/${it.name}`) }));
+      const countEl = document.getElementById("count");
+      ROWS = []; HEADERS = []; SELECTED.clear(); SORT_COL = -1;
+
+      countEl.textContent = "Loading…";
+      for(let i=0;i<files.length;i++){
+        const {name, url} = files[i];
+        try{
+          const text = await fetchText(url);
+          const obj = JSON.parse(text);
+          const flat = flattenJson(obj);
+
+          if(HEADERS.length === 0){
+            // Use FIRST file's keys (order preserved)
+            HEADERS = Object.keys(flat);
+            COL_VISIBLE = HEADERS.map(()=>true);
+            COL_WIDTHS = HEADERS.map(()=>null);
+          }
+          // Map into HEADERS; ignore extra keys; missing -> ""
+          const row = HEADERS.map(h => flat[h] ?? "");
+          ROWS.push(row);
+
+          countEl.textContent = `Loading… ${i+1}/${files.length}`;
+        }catch(e){
+          console.warn("Skipping JSON due to error", name, e);
+        }
+      }
+      if(HEADERS.length === 0) HEADERS = DEFAULT_HEADERS.slice();
+      renderTable(HEADERS, ROWS);
+      buildColumnsPanel();
+      setupColumnsUI();
+      setupSearch();
+    }
+
+    // ---- Mode switch ----
+    function applyModeUI(){
+      const mdBtn = document.getElementById("modeMd");
+      const jsBtn = document.getElementById("modeJson");
+      if(VIEW_MODE === "json"){
+        mdBtn.classList.remove("active"); mdBtn.setAttribute("aria-selected","false");
+        jsBtn.classList.add("active");    jsBtn.setAttribute("aria-selected","true");
+        document.getElementById("fmt").value = "json"; // default export suggestion
+      } else {
+        jsBtn.classList.remove("active"); jsBtn.setAttribute("aria-selected","false");
+        mdBtn.classList.add("active");    mdBtn.setAttribute("aria-selected","true");
+        document.getElementById("fmt").value = "md";
+      }
+    }
+    document.getElementById("modeMd").addEventListener("click", () => {
+      VIEW_MODE = "md"; localStorage.setItem("viewMode", VIEW_MODE); reloadAll();
+    });
+    document.getElementById("modeJson").addEventListener("click", () => {
+      VIEW_MODE = "json"; localStorage.setItem("viewMode", VIEW_MODE); reloadAll();
+    });
+
+    async function reloadAll(){
+      applyModeUI();
+      const tbl = document.getElementById("sheet");
+      tbl.innerHTML = "<thead><tr><th>Loading…</th></tr></thead>";
+      try{
+        if(VIEW_MODE === "json") await loadJson();
+        else await loadMd();
+      }catch(err){
+        tbl.innerHTML = "<thead><tr><th>Error</th></tr></thead><tbody><tr><td>"+(err && err.message ? err.message : err)+"</td></tr></tbody>";
+        console.error(err);
+      }
+    }
+
+    // ---- Export button ----
     document.getElementById("exportBtn").addEventListener("click", () => {
       if(!HEADERS.length) return;
       const fmt = document.getElementById("fmt").value;
@@ -656,18 +882,17 @@
       if(fmt === "md"){
         const md = toMarkdown(fh, fr, "Tool Disclosure List");
         downloadFile("tool-disclosure-list.md", md, "text/markdown");
-      } else {
+      } else if(fmt === "csv") {
         const csv = toCSV(fh, fr);
         downloadFile("tool-disclosure-list.csv", csv, "text/csv");
+      } else {
+        const arr = toJSONArray(fh, fr);
+        downloadFile("tool-disclosure-list.json", JSON.stringify(arr, null, 2) + "\n", "application/json");
       }
     });
 
     // ---- Go ----
-    loadAll().catch(err => {
-      const tbl = document.getElementById("sheet");
-      tbl.innerHTML = "<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Failed to load /data markdown files: " + (err && err.message ? err.message : err) + "</td></tr></tbody>";
-      console.error(err);
-    });
+    reloadAll();
   </script>
 </body>
 </html>
