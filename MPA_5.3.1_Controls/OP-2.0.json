@@ -1,0 +1,15 @@
+{
+  "document_name": "OP-2.0",
+  "owner": "MPA-TPN+",
+  "framework": "MPA Content Security Best Practices",
+  "version": "5.3.1",
+  "date": "2025-08-07",
+  "data": {
+    "Control No.": "OP-2.0",
+    "Domain": "Operational Security",
+    "Topic": "Policies & Procedures",
+    "Title in TPN+": "Work From Home/Remote Workers",
+    "BEST PRACTICES:": "Establish and regularly review a policy and process for Work From Home (WFH)/Remote Workers, in accordance with local laws, regulations, and agreements, and apply the following MPA Content Security Best Practices, tailored to WFH/Remote Workers:\n• Authentication (TS-1.6)\n• Authorization (TS-1.7)\n• Background Screening (OR-3.0)\n• Business Continuity Plan (OR-1.2)\n• Endpoint Protection (TS-1.3)\n• Identity Access Management (TS-1.8)\n• On-boarding (OR-3.1)\n• Off-boarding (OR-3.2)\n• Remote Access (TS-2.9)\n• Remote Sites & Locations (OP-2.1)\n• Risk Management (OR-2.0)\n• Training & Awareness Program (OR-3.3)\n• Wireless Networks (TS-2.11)",
+    "ADDITIONAL RECOMMENDATIONS:": "• Apply Incident Response Best Practices (OR-4.0)\n• For on-boarding, confidentiality agreements for other members at the remote location (e.g., roommate, spouse, etc.) per client requirements \n• Maintain a list of authorized remote access users\n• Regularly review user list for discrepancies and unusual or suspicious activity\n• Disconnect wireless networks while accessing content locally\n• Training includes permissible working locations (e.g., non-public spaces, areas where content is visible to unauthorized parties, etc.)\n• Change default credentials on home networking equipment\n\nFor sensitive content and data, per client requirements:\n• Apply Alarm System Best Practices (PS-1.4)\n• Apply Camera System Best Practices (PS-3.0)\n• Apply Entry/Exit Points Best Practices (PS-1.0)"
+  }
+}

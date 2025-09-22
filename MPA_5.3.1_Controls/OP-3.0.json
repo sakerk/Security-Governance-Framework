@@ -1,0 +1,15 @@
+{
+  "document_name": "OP-3.0",
+  "owner": "MPA-TPN+",
+  "framework": "MPA Content Security Best Practices",
+  "version": "5.3.1",
+  "date": "2025-08-07",
+  "data": {
+    "Control No.": "OP-3.0",
+    "Domain": "Operational Security",
+    "Topic": "Asset Management",
+    "Title in TPN+": "Tracking",
+    "BEST PRACTICES:": "Establish and regularly review a Tracking process for physical and/or digital client assets, to include the following:\n• Leverage a content asset management system\n• Utilize a unique asset identifier (e.g., barcode, unique ID, etc.) to include the location, time, and date of each asset transaction\n• Retain transaction logs for at least one year, or the maximum time allowed, in accordance with local laws, regulations, and agreements",
+    "ADDITIONAL RECOMMENDATIONS:": "• Regularly review transaction logs for anomalies\n• Watermark assets per client requirements (e.g., spoiling, visible, forensic, etc.)"
+  }
+}

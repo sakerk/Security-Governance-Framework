@@ -1,0 +1,15 @@
+{
+  "document_name": "OP-3.1",
+  "owner": "MPA-TPN+",
+  "framework": "MPA Content Security Best Practices",
+  "version": "5.3.1",
+  "date": "2025-08-07",
+  "data": {
+    "Control No.": "OP-3.1",
+    "Domain": "Operational Security",
+    "Topic": "Asset Management",
+    "Title in TPN+": "High-Security Titles",
+    "BEST PRACTICES:": "Establish and regularly review a process to support the handling of content for client-classified High-Security Titles, to include the following:\n• Aliases (e.g., AKA, working title, code name, etc.)\n• Access limited to only authorized personnel\n• Individual NDAs/Confidentiality Agreements\n• Use of mobile devices is only used for business purposes, unless client approved                 \n",
+    "ADDITIONAL RECOMMENDATIONS:": "• Use client-assigned security title aliases on assets and in asset tracking systems including life cycle management (e.g., handling of alias pre- vs. post-release)\n• Communications do not include both project alias and client title together (e.g., emails, memos, etc.)\n• Use of separate network (i.e., physical or logical segmentation)\n• A dedicated partition on shared storage\n• Store physical assets for High-Security Titles (e.g., scripts, art, external hard drives, etc.) in a secured area while not in use\n• For aliases, use a generic alias that does not reference anything that might hint at the actual project or production name (e.g., characters, locations, genre, etc.)\n• If aliases are used on any production signage, use generic signage that does not contain any artwork that might hint at the actual project or production name                            "
+  }
+}

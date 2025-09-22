@@ -1,0 +1,15 @@
+{
+  "document_name": "OP-1.2",
+  "owner": "MPA-TPN+",
+  "framework": "MPA Content Security Best Practices",
+  "version": "5.3.1",
+  "date": "2025-08-07",
+  "data": {
+    "Control No.": "OP-1.2",
+    "Domain": "Operational Security",
+    "Topic": "Logistics",
+    "Title in TPN+": "Shipping",
+    "BEST PRACTICES:": "Establish and regularly review a Shipping process for client assets, to include the following:\n• Maintain a log that includes: Time of shipment, recipient name, contact number, address of destination, and tracking number from shipper\n• Retain log(s) for one year at a minimum, or the maximum time allowed, in accordance with local laws, regulations, and agreements\n• Use client-approved shipping vendor",
+    "ADDITIONAL RECOMMENDATIONS:": "• Generate a work/shipping order to authorize client asset shipments\n• Content awaiting shipment is in a secure area under camera surveillance\n• If physical assets are not normally handled, notify client(s) when physical assets are received\n• Delivery confirmation\n• Utilize GPS tracking"
+  }
+}
