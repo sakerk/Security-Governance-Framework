@@ -1,6 +1,6 @@
 # SOP-AC-01 – Access Authorization Procedure
 
-**Related Policy:** [POL-AC-01](../policies/POL-AC-01_*.md)
+**Related Policy:** [POL-AC-01](../policies/POL-AC-01_Access_Authorization_Policy.md)
 
 | Document Name | Owner | Review Date | Review Cycle |
 | :---- | :---- | :---- | :---- |
