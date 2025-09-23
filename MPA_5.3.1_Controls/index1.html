@@ -48,7 +48,6 @@
     .hidden-col{width:0 !important;min-width:0 !important;max-width:0 !important;
       padding:0 !important;border:0 !important;overflow:hidden !important;
       clip-path:inset(0);white-space:nowrap !important;pointer-events:none;opacity:0}
-    /* keep filters row aligned when hidden */
     thead tr.filters th.hidden-col{height:0;padding:0 !important;border:0 !important}
 
     /* Controls – icons-only */
@@ -96,7 +95,7 @@
     .modal .content{padding:14px 16px}
     .modal .grid{display:grid;grid-template-columns:200px 1fr;gap:10px 14px;align-items:start}
     .modal label{color:var(--muted);font-size:13px;padding-top:10px}
-    .modal input,.modal textarea,.modal select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263241;background:#0b1220;color:var(--text)}
+    .modal input,.modal textarea,.modal select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263241;background:#0b1220;color:#var(--text)}
     .modal footer{display:flex;gap:10px;justify-content:flex-end;padding:14px 16px;border-top:1px solid var(--line)}
     .help{color:var(--muted);font-size:12px;margin-top:8px}
     .msg{font-size:13px;margin-right:auto}
@@ -136,16 +135,16 @@
           <svg class="icon" viewBox="0 0 16 16"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
         </button>
         <!-- Copy -->
-        <button id="copyBtn" class="iconbtn" title="Copy selected row(s)" aria-label="Copy selected row(s)" disabled>
+        <button id="copyBtn" class="iconbtn" title="Copy (uses selected format)" aria-label="Copy (uses selected format)" disabled>
           <svg class="icon" viewBox="0 0 16 16"><path d="M3.75 2A1.75 1.75 0 0 0 2 3.75v7.5C2 12.216 2.784 13 3.75 13h5.5A1.75 1.75 0 0 0 11 11.25v-7.5C11 2.784 10.216 2 9.25 2h-5.5Zm0 1.5h5.5a.25.25 0 0 1 .25.25v7.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25v-7.5a.25.25 0 0 1 .25-.25ZM13 4.75a.75.75 0 0 1 1.5 0v7.5A2.75 2.75 0 0 1 11.75 15h-7.5a.75.75 0 0 1 0-1.5h7.5c.69 0 1.25-.56 1.25-1.25v-7.5Z"/></svg>
         </button>
 
-        <select id="fmt" class="select" aria-label="Export format">
+        <select id="fmt" class="select" aria-label="Export/Copy format">
           <option value="md">MD</option>
           <option value="csv">CSV</option>
           <option value="json">JSON</option>
         </select>
-        <button id="exportBtn" class="iconbtn" title="Export">
+        <button id="exportBtn" class="iconbtn" title="Export (download)">
           <svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>
         </button>
       </div>
@@ -253,7 +252,7 @@
       }
       const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(path)}`;
       const body = { message: message||("Add "+path), content: b64(content), branch: GH_BRANCH };
-      const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
+      const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN,"Content-Type":"application/json"},body:JSON.stringify(body)});
       if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
       return res.json();
     }
@@ -265,7 +264,7 @@
       }
       const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(path)}`;
       const body = { message: message||("Edit "+path), content: b64(content), sha, branch: GH_BRANCH };
-      const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
+      const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN,"Content-Type":"application/json"},body:JSON.stringify(body)});
       if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
       return res.json();
     }
@@ -342,8 +341,8 @@
       if(saved) return;
       COL_VISIBLE = HEADERS.map(h=>{
         const n = norm(h);
-        if(isBestCol(h) || isRecCol(h)) return false; // hide checklist content in main grid
-        if(VIEW_MODE==="json" && JSON_META.has(n)) return false; // hide JSON meta by default
+        if(isBestCol(h) || isRecCol(h)) return false;
+        if(VIEW_MODE==="json" && JSON_META.has(n)) return false;
         return true;
       });
     }
@@ -362,12 +361,12 @@
       const trh=document.createElement("tr");
       const thSel=document.createElement("th"); thSel.className="selCol";
       const master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
-      master.addEventListener("change",()=>toggleSelectVisible(master.checked,true)); // master allows multi
+      master.addEventListener("change",()=>toggleSelectVisible(master.checked,true));
       thSel.appendChild(master); trh.appendChild(thSel);
 
       headers.forEach((h,i)=>{
         const th=document.createElement("th"); th.draggable=true; th.dataset.col=String(i);
-        th.style.position="sticky"; th.style.top="0"; // ensure absolute resizer anchors correctly
+        th.style.position="sticky"; th.style.top="0";
 
         const span=document.createElement("span"); span.className="headerInner"; span.textContent=h||("Column "+(i+1));
         span.addEventListener("click",()=>onSortClick(i)); th.appendChild(span);
@@ -378,7 +377,6 @@
         handle.addEventListener("dblclick",autoFitColumn.bind(null,i));
         th.appendChild(handle);
 
-        // Drag reorder
         th.addEventListener("dragstart",(ev)=>{ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",i); });
         th.addEventListener("dragend",()=>th.classList.remove("dragging"));
         th.addEventListener("dragover",(ev)=>ev.preventDefault());
@@ -404,7 +402,6 @@
       const tbody=document.createElement("tbody");
       rows.forEach((r,idx)=>{
         const tr=document.createElement("tr"); tr.dataset.index=String(idx);
-        // single-select; Shift enables multi
         tr.addEventListener("click",(e)=>{ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); const multi=e.shiftKey; const next=!cb.checked; setRowSelection(idx, next, multi); });
         tr.addEventListener("mouseenter",()=>{ HOVER_INDEX=idx; updateChecklistPanel(); });
         tr.addEventListener("mouseleave",()=>{ HOVER_INDEX=-1; updateChecklistPanel(); });
@@ -616,11 +613,11 @@
       document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
     })();
 
-    // ---- Export / copy ----
+    // ---- Export helpers ----
     function toMarkdown(headers,rows,title){
       const esc=v=>(v==null?"":String(v).replace(/\|/g,"\\|"));
       const head="| "+headers.map(esc).join(" | ")+" |";
-      const sep ="| "+headers.map(()=>"...").join(" | ")+" |".replace(/\.\.\./g,"---");
+      const sep ="| "+headers.map(()=> "---").join(" | ")+" |"; // FIX: proper separator
       const body=rows.map(r=>"| "+r.map(esc).join(" | ")+" |").join("\n");
       return (title?`# ${title}\n\n`:"")+head+"\n"+sep+"\n"+body+"\n";
     }
@@ -629,6 +626,7 @@
     function toJSONArray(headers,rows){ return rows.map(r=>{ const o={}; headers.forEach((h,i)=>o[h]=r[i]??""); return o; }); }
     function download(name,text,mime){ const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
 
+    // ---- Export (download) ----
     document.getElementById("exportBtn").addEventListener("click",()=>{
       if(!HEADERS.length) return;
       const fmt=document.getElementById("fmt").value;
@@ -644,13 +642,36 @@
     function visibleCols(){ const idxs=[]; COL_VISIBLE.forEach((v,i)=>{ if(v!==false) idxs.push(i); }); return idxs; }
     function filterCols(headers,rows){ const cols=visibleCols(); return { fh: cols.map(i=>headers[i]), fr: rows.map(r=>cols.map(i=>r[i])) }; }
 
+    // ---- Copy (uses selected format) ----
     document.getElementById("copyBtn").addEventListener("click", async ()=>{
       if(!HEADERS.length || SELECTED.size<1) return;
+      const fmt=document.getElementById("fmt").value;
       const rows = Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i]);
       const {fh,fr}=filterCols(HEADERS, rows);
-      const md = toMarkdown(fh,fr,"");
-      try{ await navigator.clipboard.writeText(md); toast("Copied to clipboard"); }catch{ toast("Copy failed"); }
+
+      let text = "";
+      if(fmt==="md"){
+        text = toMarkdown(fh,fr,""); // includes header + separator + selected rows
+      } else if(fmt==="csv"){
+        text = toCSV(fh,fr);
+      } else {
+        const arr = toJSONArray(fh,fr);
+        // If a single row is selected, copy an object; else copy an array
+        text = (arr.length===1 ? JSON.stringify(arr[0], null, 2) : JSON.stringify(arr, null, 2));
+      }
+
+      try{
+        await navigator.clipboard.writeText(text);
+        toast(`Copied ${fmt.toUpperCase()} to clipboard`);
+      }catch{
+        // fallback: download a temp file if clipboard fails
+        const name = `selection.${fmt}`;
+        const mime = fmt==="md" ? "text/markdown" : fmt==="csv" ? "text/csv" : "application/json";
+        download(name, text, mime);
+        toast("Clipboard blocked — downloaded instead");
+      }
     });
+
     function toast(msg){ const el=document.getElementById("count"); el.textContent=msg; setTimeout(updateCounts,1200); }
 
     // ---- Add / Edit modal (icons only) ----
@@ -790,7 +811,7 @@
 
     // ---- Checklist panel (hover OR selected) ----
     function pickRowIndexForChecklist(){
-      if(HOVER_INDEX>=0) return HOVER_INDEX; // hover updates panel
+      if(HOVER_INDEX>=0) return HOVER_INDEX;
       if(SELECTED.size>=1) return [...SELECTED][0];
       return -1;
     }
@@ -805,7 +826,7 @@
       const bestText = bestIdx>=0 ? (ROWS[idx][bestIdx]||"") : "";
       const recText  = recIdx>=0  ? (ROWS[idx][recIdx]||"")  : "";
       const linesToLis = (txt)=>{
-        const cleaned = cleanBulletLines(txt||""); // remove bullets, number lines
+        const cleaned = cleanBulletLines(txt||"");
         const lines = String(cleaned).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
         if(lines.length===0) return ["(none)"];
         return lines;
