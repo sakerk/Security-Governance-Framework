@@ -3,120 +3,93 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tool Disclosure List</title>
+  <title>MPA Best Practices 5.3.1</title>
   <style>
-    :root {
+    :root{
       --bg:#0b0f14; --panel:#0f172a; --muted:#93a1b1; --text:#e6edf3; --line:#1f2937;
       --accent:#60a5fa; --sel:#19324d; --hover:#0f2236; --danger:#ef4444; --ok:#22c55e;
-      --gutter:#1f2937; --sidebg:#0b1220;
+      --side-width: 380px;
     }
-    html, body { height:100%; }
-    body {
-      margin:0; background:var(--bg); color:var(--text);
-      font:14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-    }
-    .app { height:100vh; display:flex; flex-direction:column; }
-    .topbar {
-      position:sticky; top:0; z-index:20;
-      display:flex; gap:10px; align-items:center; padding:10px 12px;
-      background:var(--panel); border-bottom:1px solid var(--line);
-    }
-    .title { margin:0; font-size:16px; font-weight:600; letter-spacing:.2px; white-space:nowrap; }
-    .spacer { flex:1; }
-    .search {
-      min-width:220px; max-width:420px; width:36ch;
-      padding:10px 12px; border-radius:12px; outline:none;
-      border:1px solid #263241; background:#0b1220; color:var(--text);
-    }
-    .count { font-size:12px; color:var(--muted); white-space:nowrap; }
-    .exportWrap, .columnsWrap, .modeWrap { display:flex; gap:8px; align-items:center; position:relative; }
-    .select, .btn {
-      appearance:none; border:1px solid #27415f; background:#0f213c; color:#dbeafe;
-      padding:10px 12px; border-radius:12px; cursor:pointer;
-    }
-    .btn:hover { background:#15325d; }
-    .btn.primary { background:#13305a; border-color:#2d4c7b; }
-    .select { min-width:150px; }
-    .colsBtn { white-space:nowrap; }
-    .colsPanel {
-      display:none; position:absolute; top:42px; right:0; z-index:1000;
-      min-width:260px; max-height:60vh; overflow:auto;
-      background:#0b1220; border:1px solid #263241; border-radius:12px; padding:10px;
-      box-shadow:0 10px 30px rgba(0,0,0,.35);
-    }
-    .colsPanel.open { display:block; }
-    .colsPanel label { display:flex; align-items:center; gap:8px; padding:6px 4px; cursor:pointer; }
-    .colsPanel .note { margin-top:8px; color:var(--muted); font-size:12px; }
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+    .app{height:100vh;display:flex;flex-direction:column}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+    .title{margin:0;font-size:16px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+    .spacer{flex:1}
+    .search{min-width:220px;max-width:420px;width:36ch;padding:10px 12px;border-radius:12px;outline:none;border:1px solid #263241;background:#0b1220;color:var(--text)}
+    .count{font-size:12px;color:var(--muted);white-space:nowrap}
+    .wrap {flex:1 1 auto;min-height:0}
+    .mainbar{display:flex;height:100%}
+    .main{flex:1;min-width:0;padding:10px;display:flex;flex-direction:column}
+    .tableScroll{flex:1;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px}
+    table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+    td{white-space:pre-wrap}
+    thead th{position:sticky;top:0;background:#0f172a;z-index:1;user-select:none}
+    tbody tr.hide{display:none}
+    tbody tr.selected td{background:var(--sel)}
+    tbody tr:hover td{background:var(--hover)}
+    tbody tr.selected:hover td{background:var(--sel)}
+    th.selCol,td.selCol{width:44px;min-width:44px;max-width:44px;text-align:center}
+    input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
+    .resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;user-select:none;background:linear-gradient(to right, transparent 0, transparent 3px, #1f2937 3px, #1f2937 5px, transparent 5px);opacity:.3}
+    th{position:sticky;top:0;background:#0f172a}
+    th .headerInner{position:relative;display:flex;gap:6px;align-items:center;padding-right:10px;cursor:pointer}
+    .sortIndicator{font-size:12px;color:#9aa6b2}
+    .hide-col{display:none!important}
 
-    .wrap { flex:1 1 auto; min-height:0; padding:10px; }
-    .split { height:100%; display:flex; min-width:0; gap:0; }
+    /* Controls */
+    .controls{display:flex;gap:6px;align-items:center}
+    .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid #27415f;background:#0f213c;color:#dbeafe;border-radius:10px;cursor:pointer}
+    .iconbtn[disabled]{opacity:.5;cursor:not-allowed}
+    .iconbtn:hover{background:#15325d}
+    .icon{width:16px;height:16px;fill:currentColor}
 
-    .leftPane { flex:1 1 auto; min-width:0; display:flex; }
-    .tableScroll {
-      flex:1 1 auto; height:100%; overflow:auto; background:#0b1220;
-      border:1px solid #263241; border-radius:12px;
-    }
+    /* Columns dropdown */
+    .columnsWrap,.modeWrap{display:flex;gap:8px;align-items:center;position:relative}
+    .colsBtn{white-space:nowrap}
+    .colsPanel{display:none;position:absolute;top:42px;right:0;z-index:1000;min-width:260px;max-height:60vh;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .colsPanel.open{display:block}
+    .colsPanel label{display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer}
+    .colsPanel .note{margin-top:8px;color:var(--muted);font-size:12px}
+    .select{appearance:none;border:1px solid #27415f;background:#0f213c;color:#dbeafe;padding:10px 12px;border-radius:12px;cursor:pointer;min-width:150px}
 
-    .gutter {
-      width:6px; flex:0 0 auto; cursor:col-resize;
-      background:linear-gradient(to right, transparent, var(--gutter), transparent);
-      margin:0 8px;
-    }
+    /* Right checklist pane + gutter */
+    .gutter{width:6px;cursor:col-resize;background:linear-gradient(to right, transparent 0, transparent 2px, #1f2937 2px, #1f2937 4px, transparent 4px)}
+    .side{width:var(--side-width);min-width:260px;max-width:70vw;border-left:1px solid var(--line);background:#0b1220;padding:10px;overflow:auto}
+    .side h2{margin:0 0 8px 0;font-size:14px}
+    .side .section{margin-bottom:14px}
+    .checklist{list-style:none;margin:0;padding:0}
+    .checklist li{display:flex;align-items:flex-start;gap:8px;padding:6px 6px}
+    .checklist input{margin-top:2px}
 
-    .rightPane {
-      width:var(--side-width, 360px); min-width:220px; max-width:70vw;
-      background:var(--sidebg); border:1px solid #263241; border-radius:12px;
-      display:flex; flex-direction:column; overflow:hidden;
-    }
-    .sideHeader {
-      display:flex; align-items:center; gap:10px; padding:10px 12px;
-      border-bottom:1px solid var(--line); background:#0f172a;
-    }
-    .sideTitle { font-weight:600; }
-    .sideBody { flex:1 1 auto; overflow:auto; padding:12px; }
-
-    .chkSection { margin-bottom:16px; }
-    .chkSection h3 { margin:0 0 8px 0; font-size:14px; color:#cbd5e1; }
-    .chkList { display:flex; flex-direction:column; gap:6px; }
-    .chkItem { display:flex; align-items:flex-start; gap:8px; }
-    .chkItem input { margin-top:2px; }
-    .chkItem label { white-space:pre-wrap; }
-
-    table { width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
-    th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
-    td { white-space:pre-wrap; }
-    thead th { position:sticky; top:0; background:#0f172a; z-index:1; user-select:none; }
-    thead th.dragging { opacity:.6; }
-    tbody tr.hide { display:none; }
-    tbody tr.selected td { background:var(--sel); }
-    tbody tr.focused td { outline:1px dashed var(--accent); outline-offset:-3px; }
-    tbody tr:hover td { background:var(--hover); }
-    tbody tr.selected:hover td { background:var(--sel); }
-    th.selCol, td.selCol { width:44px; min-width:44px; max-width:44px; text-align:center; }
-    input[type="checkbox"]{ width:16px; height:16px; cursor:pointer; }
-
-    .resizer {
-      position:absolute; top:0; right:-4px; width:8px; height:100%;
-      cursor:col-resize; user-select:none;
-      background:linear-gradient(to right, transparent 0, transparent 3px, #1f2937 3px, #1f2937 5px, transparent 5px);
-      opacity:.3;
-    }
-    th { position:sticky; top:0; background:#0f172a; }
-    th .headerInner { position:relative; display:flex; gap:6px; align-items:center; padding-right:10px; cursor:pointer; }
-    .sortIndicator { font-size:12px; color:#9aa6b2; }
-    .hide-col { display:none !important; }
-
-    .seg { display:inline-flex; border:1px solid #27415f; border-radius:12px; overflow:hidden; }
-    .seg button { border:0; background:#0f213c; color:#dbeafe; padding:8px 12px; cursor:pointer; }
-    .seg button.active { background:#13305a; }
+    /* Segmented view mode */
+    .seg{display:inline-flex;border:1px solid #27415f;border-radius:12px;overflow:hidden}
+    .seg button{border:0;background:#0f213c;color:#dbeafe;padding:8px 12px;cursor:pointer}
+    .seg button.active{background:#13305a}
 
     @media (max-width:900px){
-      .title { display:none; }
-      .search { flex:1; min-width:0; width:auto; }
-      .select { display:none; }
-      .rightPane { display:none; } /* tuck away on small screens */
-      .gutter { display:none; }
+      .title{display:none}
+      .search{flex:1;min-width:0;width:auto}
+      .select{display:none}
+      .side{display:none} .gutter{display:none}
     }
+
+    /* Modal */
+    .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
+    .modalBackdrop.open{display:flex}
+    .modal{width:min(900px,92vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+    .modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+    .modal h2{margin:0;font-size:16px}
+    .modal .content{padding:14px 16px}
+    .modal .grid{display:grid;grid-template-columns:200px 1fr;gap:10px 14px;align-items:start}
+    .modal label{color:var(--muted);font-size:13px;padding-top:10px}
+    .modal input,.modal textarea,.modal select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263241;background:#0b1220;color:var(--text)}
+    .modal footer{display:flex;gap:10px;justify-content:flex-end;padding:14px 16px;border-top:1px solid var(--line)}
+    .help{color:var(--muted);font-size:12px;margin-top:8px}
+    .msg{font-size:13px;margin-right:auto}
+    .msg.ok{color:var(--ok)} .msg.err{color:var(--danger)}
+    @media (max-width:900px){ .modal .grid{grid-template-columns:1fr} .modal label{padding-top:0} }
   </style>
 </head>
 <body>
@@ -126,7 +99,7 @@
 
       <div class="modeWrap" title="Choose file type to view/save">
         <div class="seg" role="tablist" aria-label="View mode">
-          <button id="modeMd"   role="tab" aria-selected="true">Markdown</button>
+          <button id="modeMd" role="tab" aria-selected="true">Markdown</button>
           <button id="modeJson" role="tab" aria-selected="false">JSON</button>
         </div>
       </div>
@@ -134,19 +107,35 @@
       <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search table" />
 
       <div class="columnsWrap">
-        <button id="colsBtn" class="btn colsBtn">Columns ▾</button>
+        <button id="colsBtn" class="iconbtn" title="Columns" aria-haspopup="true" aria-expanded="false">
+          <!-- funnel icon -->
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.75A.75.75 0 0 1 2.25 3h11.5a.75.75 0 0 1 .54 1.28L9.5 9.06v3.69a.75.75 0 0 1-1.14.64l-2-1.25a.75.75 0 0 1-.36-.64V9.06L1.71 4.28A.75.75 0 0 1 1.5 3.75Z"/></svg>
+        </button>
         <div id="colsPanel" class="colsPanel" role="dialog" aria-label="Toggle columns"></div>
       </div>
 
-      <div class="exportWrap">
-        <button id="addBtn" class="btn primary">+ Add Row</button>
+      <div class="controls">
+        <!-- Add -->
+        <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
+        </button>
+        <!-- Edit -->
+        <button id="editBtn" class="iconbtn" title="Edit selected row" aria-label="Edit selected row" disabled>
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
+        </button>
+        <!-- Copy -->
+        <button id="copyBtn" class="iconbtn" title="Copy selected row(s)" aria-label="Copy selected row(s)" disabled>
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.75 2A1.75 1.75 0 0 0 2 3.75v7.5C2 12.216 2.784 13 3.75 13h5.5A1.75 1.75 0 0 0 11 11.25v-7.5C11 2.784 10.216 2 9.25 2h-5.5Zm0 1.5h5.5a.25.25 0 0 1 .25.25v7.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25v-7.5a.25.25 0 0 1 .25-.25ZM13 4.75a.75.75 0 0 1 1.5 0v7.5A2.75 2.75 0 0 1 11.75 15h-7.5a.75.75 0 0 1 0-1.5h7.5c.69 0 1.25-.56 1.25-1.25v-7.5Z"/></svg>
+        </button>
+
         <select id="fmt" class="select" aria-label="Export format">
-          <option value="md">Markdown (.md)</option>
-          <option value="csv">CSV (.csv)</option>
-          <option value="json">JSON (.json)</option>
+          <option value="md">MD</option>
+          <option value="csv">CSV</option>
+          <option value="json">JSON</option>
         </select>
-        <button id="exportBtn" class="btn">Export</button>
-        <button id="copyBtn" class="btn">Copy Row</button>
+        <button id="exportBtn" class="iconbtn" title="Export">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>
+        </button>
       </div>
 
       <div class="spacer"></div>
@@ -154,54 +143,42 @@
     </header>
 
     <div class="wrap">
-      <div class="split">
-        <div class="leftPane">
+      <div class="mainbar">
+        <div class="main">
           <div class="tableScroll">
-            <table id="sheet">
-              <colgroup id="colgroup">
-                <col class="col-sel">
-              </colgroup>
-            </table>
+            <table id="sheet"><colgroup id="colgroup"><col class="col-sel"></colgroup></table>
           </div>
         </div>
-        <div id="gutter" class="gutter" title="Drag to resize"></div>
-        <aside id="rightPane" class="rightPane">
-          <div class="sideHeader">
-            <div class="sideTitle">Checklist</div>
-            <button id="copyRowBtn" class="btn">Copy Row</button>
+        <div id="gutter" class="gutter" title="Drag to resize checklist panel" aria-hidden="true"></div>
+        <aside class="side" aria-label="Checklist panel">
+          <h2>Checklist</h2>
+          <div class="section">
+            <strong>Best Practices</strong>
+            <ul id="bestList" class="checklist"></ul>
           </div>
-          <div id="sideBody" class="sideBody">
-            <div class="chkSection">
-              <h3>BEST PRACTICES</h3>
-              <div id="bpList" class="chkList"></div>
-            </div>
-            <div class="chkSection">
-              <h3>ADDITIONAL RECOMMENDATIONS</h3>
-              <div id="arList" class="chkList"></div>
-            </div>
+          <div class="section">
+            <strong>Additional Recommendations</strong>
+            <ul id="recList" class="checklist"></ul>
           </div>
         </aside>
       </div>
     </div>
   </div>
 
-  <!-- Add Row Modal -->
+  <!-- Add/Edit Row Modal -->
   <div id="addModal" class="modalBackdrop" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal" role="document">
       <header>
-        <h2>Add Row</h2>
-        <button id="addClose" class="btn">Close</button>
+        <h2 id="formTitle">Add Row</h2>
+        <button id="addClose" class="iconbtn" aria-label="Close"><svg class="icon" viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 0 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 0 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 1 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z"/></svg></button>
       </header>
       <div class="content">
-        <form id="addForm">
-          <div id="addGrid" class="grid"></div>
-          <p class="help">All fields are optional. Leave blank to insert an empty cell.</p>
-        </form>
+        <form id="addForm"><div id="addGrid" class="grid"></div><p class="help">All fields are optional.</p></form>
       </div>
       <footer>
         <div id="addMsg" class="msg" aria-live="polite"></div>
-        <button id="addCancel" class="btn">Cancel</button>
-        <button id="addSave" class="btn primary">Save</button>
+        <button id="addCancel" class="iconbtn">Cancel</button>
+        <button id="addSave" class="iconbtn" style="border-color:#2d4c7b;background:#13305a">Save</button>
       </footer>
     </div>
   </div>
@@ -209,9 +186,236 @@
   <script>
     // ---- Config ----
     const GH_OWNER  = "sakerk";
-    const GH_REPO   = "AI-Tool-Disclosure-List";
+    const GH_REPO   = "Security-Governance-Framework";
     const GH_BRANCH = "main";
-    const DATA_DIR  = "data";
+    const DATA_DIR  = "MPA_5.3.1_Controls";
 
-    let GH_TOKEN   = localStorage.getItem("ghToken") || "";
-    let VIEW_MODE  = localStorage.get
+    let GH_TOKEN  = localStorage.getItem("ghToken") || "";
+    let VIEW_MODE = localStorage.getItem("viewMode") || "md";
+    const VIS_KEY   = (mode)=>`colVisible:${mode}`;
+    const WIDTH_KEY = (mode)=>`colWidths:${mode}`;
+
+    const DEFAULT_HEADERS = [
+      "Tool Name","License Type","Tool Type","Tool Category","Hosting Model",
+      "Risk Level","Output Handling Category","Usage Description","Official Website","Approval Status"
+    ];
+
+    // ---- State ----
+    let HEADERS=[], ROWS=[], FILES=[]; // FILES[i] = {path, sha, name, url}
+    const SELECTED = new Set();
+    let COL_VISIBLE=[], COL_WIDTHS=[];
+    let INDEX_ROWS=[];
+    let SORT_COL=-1, SORT_DIR=1;
+    let EDIT_INDEX = -1;
+
+    // ---- GitHub helpers ----
+    const ghContentsUrl = (dir)=>`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(dir)}?ref=${encodeURIComponent(GH_BRANCH)}`;
+    const ghRawUrl = (path)=>`https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${path}`;
+    async function ghList(dir){
+      const url = ghContentsUrl(dir);
+      let res = await fetch(url);
+      if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
+      if(!res.ok) throw new Error("GitHub list error "+res.status);
+      return res.json();
+    }
+    async function fetchText(url){
+      let res = await fetch(url);
+      if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
+      if(!res.ok) throw new Error("Fetch error "+res.status+" for "+url);
+      return res.text();
+    }
+    const b64 = (s)=>btoa(unescape(encodeURIComponent(s)));
+    async function createFileInRepo(path, content, message){
+      if(!GH_TOKEN){
+        const tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
+        if(!tok) throw new Error("Write cancelled (no token)");
+        GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
+      }
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(path)}`;
+      const body = { message: message||("Add "+path), content: b64(content), branch: GH_BRANCH };
+      const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN,"Content-Type":"application/json"},body:JSON.stringify(body)});
+      if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
+      return res.json();
+    }
+    async function updateFileInRepo(path, content, message, sha){
+      if(!GH_TOKEN){
+        const tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
+        if(!tok) throw new Error("Write cancelled (no token)");
+        GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
+      }
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(path)}`;
+      const body = { message: message||("Edit "+path), content: b64(content), sha, branch: GH_BRANCH };
+      const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN,"Content-Type":"application/json"},body:JSON.stringify(body)});
+      if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
+      return res.json();
+    }
+
+    // ---- MD parsing ----
+    function splitCells(line){
+      let s=line.trim(); s=s.replace(/^\|/,"").replace(/\|$/,"");
+      const parts=[]; let cur="", esc=false;
+      for(let i=0;i<s.length;i++){ const ch=s[i];
+        if(esc){ cur+=ch; esc=false; continue; }
+        if(ch==="\\"){ esc=true; continue; }
+        if(ch==="|"){ parts.push(cur.trim()); cur=""; continue; }
+        cur+=ch;
+      }
+      parts.push(cur.trim()); return parts;
+    }
+    function parseFirstTable(md){
+      const lines=md.split(/\r?\n/);
+      for(let i=0;i<lines.length-1;i++){
+        const headerLine=lines[i], sepLine=lines[i+1]||"";
+        if(/^\s*\|.*\|\s*$/.test(headerLine) && /^\s*\|\s*:?-{3,}.*\|\s*$/.test(sepLine)){
+          const headers=splitCells(headerLine), rows=[];
+          for(let j=i+2;j<lines.length;j++){
+            const ln=lines[j]; if(!/^\s*\|.*\|\s*$/.test(ln)) break;
+            const cells=splitCells(ln); if(cells.every(c=>c.trim()==="")) continue;
+            rows.push(cells);
+          }
+          return {headers,rows};
+        }
+      }
+      return null;
+    }
+
+    // ---- JSON flattening ----
+    const isObj = (v)=>v && typeof v==='object' && !Array.isArray(v);
+    function cleanBulletLines(text){
+      if(text==null) return "";
+      const raw=String(text);
+      const lines=raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      if(lines.length<=1) return raw.trim();
+      const cleaned=lines.map(l=>l.replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,""));
+      return cleaned.map((l,i)=>`${i+1}. ${l}`).join("\n");
+    }
+    function flattenJson(obj){
+      const out={};
+      for(const [k,v] of Object.entries(obj||{})){
+        if(isObj(v)){
+          if(k.toLowerCase()==="data"){
+            for(const [k2,v2] of Object.entries(v)) out[k2]=cleanBulletLines(v2);
+          } else {
+            for(const [k2,v2] of Object.entries(v)){
+              out[`${k}.${k2}`]=cleanBulletLines(isObj(v2)?JSON.stringify(v2):Array.isArray(v2)?v2.join("\n"):v2);
+            }
+          }
+        } else if(Array.isArray(v)){ out[k]=cleanBulletLines(v.join("\n"));
+        } else { out[k]=cleanBulletLines(v); }
+      }
+      return out;
+    }
+
+    // ---- UI helpers ----
+    function norm(s){ return String(s||"").trim().toLowerCase().replace(/[:]/g,""); }
+    const isBestCol = (h)=> norm(h)==="best practices";
+    const isRecCol  = (h)=> norm(h)==="additional recommendations";
+    const JSON_META = new Set(["document_name","owner","framework","version","date"]);
+
+    function hideDefaultsIfFresh(){
+      // Only apply defaults if we don't already have saved visibility for this mode.
+      const saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
+      if(saved) return;
+      COL_VISIBLE = HEADERS.map(h=>{
+        const n = norm(h);
+        if(isBestCol(h) || isRecCol(h)) return false; // always hidden by default
+        if(VIEW_MODE==="json" && JSON_META.has(n)) return false;
+        return true;
+      });
+    }
+
+    // ---- Render table ----
+    function renderTable(headers, rows){
+      const tbl = document.getElementById("sheet");
+      tbl.innerHTML="";
+      const colgroup=document.createElement("colgroup"); colgroup.id="colgroup";
+      const selCol=document.createElement("col"); selCol.className="col-sel"; colgroup.appendChild(selCol);
+      tbl.appendChild(colgroup);
+
+      const thead=document.createElement("thead"); const trh=document.createElement("tr");
+      const thSel=document.createElement("th"); thSel.className="selCol";
+      const master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
+      master.addEventListener("change",()=>toggleSelectVisible(master.checked)); thSel.appendChild(master); trh.appendChild(thSel);
+
+      headers.forEach((h,i)=>{
+        const th=document.createElement("th"); th.draggable=true; th.dataset.col=String(i);
+        const span=document.createElement("span"); span.className="headerInner"; span.textContent=h||("Column "+(i+1));
+        span.addEventListener("click",()=>onSortClick(i)); th.appendChild(span);
+        const si=document.createElement("span"); si.className="sortIndicator"; si.textContent=(SORT_COL===i?(SORT_DIR===1?"▲":"▼"):""); span.appendChild(si);
+        const handle=document.createElement("div"); handle.className="resizer";
+        handle.addEventListener("mousedown",startResize.bind(null,i));
+        handle.addEventListener("dblclick",autoFitColumn.bind(null,i));
+        th.appendChild(handle);
+
+        th.addEventListener("dragstart",(ev)=>{ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",i); });
+        th.addEventListener("dragend",()=>th.classList.remove("dragging"));
+        th.addEventListener("dragover",(ev)=>ev.preventDefault());
+        th.addEventListener("drop",(ev)=>{ ev.preventDefault(); const from=parseInt(ev.dataTransfer.getData("text/plain"),10); const to=i; if(Number.isInteger(from)&&from!==to) reorderColumns(from,to); });
+
+        trh.appendChild(th);
+        const c=document.createElement("col"); c.dataset.col=String(i); colgroup.appendChild(c);
+      });
+      thead.appendChild(trh);
+
+      const tbody=document.createElement("tbody");
+      rows.forEach((r,idx)=>{
+        const tr=document.createElement("tr"); tr.dataset.index=String(idx);
+        tr.addEventListener("click",(e)=>{ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); cb.checked=!cb.checked; toggleRow(idx,tr,cb.checked); });
+
+        const tdSel=document.createElement("td"); tdSel.className="selCol";
+        const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=SELECTED.has(idx);
+        cb.addEventListener("change",()=>toggleRow(idx,tr,cb.checked)); tdSel.appendChild(cb); tr.appendChild(tdSel);
+
+        r.forEach((v,i)=>{ const td=document.createElement("td"); td.dataset.col=String(i); td.textContent=(v==null?"":v); tr.appendChild(td); });
+
+        if(SELECTED.has(idx)) tr.classList.add("selected");
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(thead); tbl.appendChild(tbody);
+
+      restoreColState(); hideDefaultsIfFresh(); applyColumnVisibility(true); applyColumnWidths();
+      buildIndexRows(); updateCounts(); buildColumnsPanel(); updateActionButtons(); updateChecklistPanel();
+    }
+
+    function updateActionButtons(){
+      const edit = document.getElementById("editBtn");
+      const copy = document.getElementById("copyBtn");
+      const count = SELECTED.size;
+      edit.disabled = count !== 1;
+      copy.disabled = count < 1;
+    }
+
+    // ---- Sorting / reordering ----
+    function onSortClick(i){
+      if(SORT_COL===i) SORT_DIR=-SORT_DIR; else { SORT_COL=i; SORT_DIR=1; }
+      // sort rows & FILES together
+      const zipped = ROWS.map((row,idx)=>({row, file:FILES[idx]}));
+      zipped.sort((A,B)=>{
+        const va=(A.row[i]??"").toString().toLowerCase();
+        const vb=(B.row[i]??"").toString().toLowerCase();
+        if(va<vb) return -1*SORT_DIR; if(va>vb) return 1*SORT_DIR; return 0;
+      });
+      ROWS = zipped.map(z=>z.row);
+      FILES= zipped.map(z=>z.file);
+      SELECTED.clear();
+      renderTable(HEADERS, ROWS);
+    }
+    function reorderColumns(from,to){
+      const move=(arr)=>{ const x=arr.splice(from,1)[0]; arr.splice(to,0,x); };
+      move(HEADERS); move(COL_VISIBLE); move(COL_WIDTHS);
+      ROWS = ROWS.map(r=>{ const x=r.slice(); const cell=x.splice(from,1)[0]; x.splice(to,0,cell); return x; });
+      renderTable(HEADERS, ROWS);
+    }
+
+    // ---- Column visibility/widths ----
+    function applyColumnVisibility(save=false){
+      const ths=document.querySelectorAll("#sheet thead th[data-col]");
+      const tds=document.querySelectorAll("#sheet tbody td[data-col]");
+      const cols=document.querySelectorAll("#colgroup col[data-col]");
+      ths.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hide-col", hide); });
+      tds.forEach(td=>{ const i=+td.dataset.col; const hide=COL_VISIBLE[i]===false; td.classList.toggle("hide-col", hide); });
+      cols.forEach(col=>{ const i=+col.dataset.col; const hide=COL_VISIBLE[i]===false; col.style.width = hide ? "0px" : (COL_WIDTHS[i] ? COL_WIDTHS[i]+"px" : ""); });
+      if(save) saveColState();
+    }
+    function applyColumnWidths(){
+      const colgroup=document.getElementById("colgroup"); if(!colgroup) return;
