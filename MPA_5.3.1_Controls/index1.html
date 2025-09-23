@@ -26,8 +26,8 @@
     th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
     td{white-space:pre-wrap}
     thead th{position:sticky;top:0;background:#0f172a;z-index:2;user-select:none}
-    thead .filters th{position:sticky;top:36px; background:#0e1525; z-index:2; padding:6px 8px; border-bottom:1px solid #172233}
-    thead .filters input{width:100%; box-sizing:border-box; padding:6px 8px; border-radius:8px; border:1px solid #263241; background:#0b1220; color:var(--text); font-size:12px}
+    thead .filters th{position:sticky;top:36px;background:#0e1525;z-index:2;padding:6px 8px;border-bottom:1px solid #172233}
+    thead .filters input{width:100%;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1px solid #263241;background:#0b1220;color:var(--text);font-size:12px}
     tbody tr.hide{display:none}
     tbody tr.selected td{background:var(--sel)}
     tbody tr:hover td{background:var(--hover)}
@@ -40,7 +40,7 @@
     .sortIndicator{font-size:12px;color:#9aa6b2}
     .hide-col{display:none!important}
 
-    /* Controls – icons-only (Octicon-ish) */
+    /* Controls – icons-only */
     .controls{display:flex;gap:6px;align-items:center}
     .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid #27415f;background:#0f213c;color:#dbeafe;border-radius:10px;cursor:pointer}
     .iconbtn[disabled]{opacity:.5;cursor:not-allowed}
@@ -209,7 +209,7 @@
 
     // ---- State ----
     let HEADERS=[], ROWS=[], FILES=[];
-    const SELECTED = new Set(); // multi-select OFF by default; use Shift to multi-select
+    const SELECTED = new Set(); // single-select by default; Shift for multi
     let COL_VISIBLE=[], COL_WIDTHS=[];
     let INDEX_ROWS=[];
     let SORT_COL=-1, SORT_DIR=1;
@@ -332,13 +332,13 @@
       if(saved) return;
       COL_VISIBLE = HEADERS.map(h=>{
         const n = norm(h);
-        if(isBestCol(h) || isRecCol(h)) return false; // always hidden by default
+        if(isBestCol(h) || isRecCol(h)) return false; // hide checklist content in main grid
         if(VIEW_MODE==="json" && JSON_META.has(n)) return false; // hide JSON meta by default
         return true;
       });
     }
 
-    // ---- render table (with filter row) ----
+    // ---- render table (with per-column filters) ----
     function renderTable(headers, rows){
       const tbl = document.getElementById("sheet");
       tbl.innerHTML="";
@@ -352,7 +352,7 @@
       const trh=document.createElement("tr");
       const thSel=document.createElement("th"); thSel.className="selCol";
       const master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
-      master.addEventListener("change",()=>toggleSelectVisible(master.checked,true)); // master can multi-select
+      master.addEventListener("change",()=>toggleSelectVisible(master.checked,true)); // master allows multi
       thSel.appendChild(master); trh.appendChild(thSel);
 
       headers.forEach((h,i)=>{
@@ -392,7 +392,7 @@
       const tbody=document.createElement("tbody");
       rows.forEach((r,idx)=>{
         const tr=document.createElement("tr"); tr.dataset.index=String(idx);
-        // Click or checkbox: single-select unless Shift is held
+        // single-select; Shift enables multi
         tr.addEventListener("click",(e)=>{ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); const multi=e.shiftKey; const next=!cb.checked; setRowSelection(idx, next, multi); });
         tr.addEventListener("mouseenter",()=>{ HOVER_INDEX=idx; updateChecklistPanel(); });
         tr.addEventListener("mouseleave",()=>{ HOVER_INDEX=-1; updateChecklistPanel(); });
@@ -413,10 +413,9 @@
       buildIndexRows(); applySearchAndFilters(); updateCounts(); buildColumnsPanel(); updateActionButtons(); updateChecklistPanel();
     }
 
-    // ---- selection logic (single by default; Shift enables multi) ----
+    // ---- selection logic ----
     function setRowSelection(idx, on, multi){
-      if(!multi){ // clear others first
-        // uncheck all currently selected
+      if(!multi){
         const prev = Array.from(SELECTED);
         SELECTED.clear();
         prev.forEach(i=>{
@@ -425,13 +424,18 @@
         });
       }
       const tr = document.querySelector(`#sheet tbody tr[data-index="${idx}"]`);
-      if(on){ SELECTED.add(idx); tr?.classList.add("selected"); tr?.querySelector('td.selCol input')?.setAttribute("checked","checked"); }
-      else  { SELECTED.delete(idx); tr?.classList.remove("selected"); tr?.querySelector('td.selCol input')?.removeAttribute("checked"); }
+      if(on){
+        SELECTED.add(idx);
+        if(tr){ tr.classList.add("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=true; }
+      } else {
+        SELECTED.delete(idx);
+        if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
+      }
       updateCounts(); updateActionButtons(); updateChecklistPanel();
     }
     function toggleSelectVisible(on, forceMulti){
       const visibleRows = Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)"));
-      if(!forceMulti){ // respect single-select default
+      if(!forceMulti){
         if(visibleRows.length){ const idx=+visibleRows[0].dataset.index; setRowSelection(idx, true, false); }
         return;
       }
@@ -448,6 +452,19 @@
       document.getElementById("copyBtn").disabled = SELECTED.size < 1;
     }
 
+    // ---- global count (FIX) ----
+    function updateCounts() {
+      const total = ROWS.length;
+      const visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
+      const sel = SELECTED.size;
+      const el = document.getElementById("count");
+      if (el) {
+        el.textContent =
+          (visible === total ? `${total} rows` : `Showing ${visible} of ${total}`) +
+          ` • ${sel} selected`;
+      }
+    }
+
     // ---- Search + per-column filters ----
     function buildIndexRows(){
       const bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
@@ -461,10 +478,7 @@
       const q = document.getElementById("q").value.trim().toLowerCase();
       const terms = q.split(/\s+/).filter(Boolean);
       INDEX_ROWS.forEach(({tr, texts})=>{
-        const idx = +tr.dataset.index;
-        // global terms across any column
         const globalHit = terms.every(t => texts.some(x => x.includes(t)));
-        // per-column filters (only consider visible columns' filters if we want, but user asked per-column; apply regardless)
         const perColHit = FILTERS.every((f,i)=>{
           if(!f) return true;
           const cell = texts[i] || "";
@@ -491,7 +505,6 @@
       });
       ROWS = zipped.map(z=>z.row);
       FILES= zipped.map(z=>z.file);
-      // keep selection indexes in new order (clear to avoid index confusion)
       SELECTED.clear();
       renderTable(HEADERS, ROWS);
     }
@@ -535,24 +548,6 @@
       if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else COL_VISIBLE=HEADERS.map(()=>true);
       if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else COL_WIDTHS=HEADERS.map(()=>null);
     }catch{ COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null); } }
-
-    // ---- Resizing columns ----
-    let resizeState=null;
-    function startResize(i,ev){ ev.preventDefault();
-      const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
-      const col=document.querySelector(`#colgroup col[data-col="${i}"]`);
-      const startX=ev.clientX, startW=th.getBoundingClientRect().width;
-      resizeState={i,startX,startW,col}; window.addEventListener("mousemove",onResizeMove); window.addEventListener("mouseup",endResize); document.body.style.cursor="col-resize";
-    }
-    function onResizeMove(ev){ if(!resizeState) return; const {i,startX,startW,col}=resizeState; const w=Math.max(60, Math.round(startW+(ev.clientX-startX))); COL_WIDTHS[i]=w; if(col) col.style.width=w+"px"; }
-    function endResize(){ window.removeEventListener("mousemove",onResizeMove); window.removeEventListener("mouseup",endResize); document.body.style.cursor=""; resizeState=null; saveColState(); }
-    function autoFitColumn(i){
-      const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
-      const cells=Array.from(document.querySelectorAll(`#sheet tbody td[data-col="${i}"]`));
-      const measure=el=>Math.ceil(el.getBoundingClientRect().width);
-      let maxW=measure(th); cells.forEach(td=>{ maxW=Math.max(maxW, measure(td)); });
-      maxW=Math.min(Math.max(80, maxW+12), 800); COL_WIDTHS[i]=maxW; applyColumnWidths();
-    }
 
     // ---- Columns dropdown ----
     function buildColumnsPanel(){
@@ -672,7 +667,7 @@
         const fname = path.split("/").pop();
         const mime = VIEW_MODE==="json" ? "application/json" : "text/markdown";
         const blob=new Blob([content],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
-        setStatus("Downloaded (add to repo /data manually)", true);
+        setStatus("Downloaded (add to repo manually)", true);
       }
     });
 
@@ -691,7 +686,11 @@
           const text=await fetchText(url);
           const parsed=parseFirstTable(text); if(!parsed) continue;
           if(HEADERS.length===0){ HEADERS=parsed.headers.length?parsed.headers:DEFAULT_HEADERS.slice(); COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null); }
-          if(parsed.rows && parsed.rows.length){ const row=parsed.rows[0]; ROWS.push( HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??"")) ); FILES.push({name,url,path,sha}); }
+          if(parsed.rows && parsed.rows.length){
+            const row=parsed.rows[0];
+            ROWS.push( HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??"")) ); // MD cells cleaned like JSON
+            FILES.push({name,url,path,sha});
+          }
           countEl.textContent=`Loading… ${i+1}/${list.length}`;
         }catch(e){ console.warn("Skip MD",name,e); }
       }
@@ -742,7 +741,7 @@
 
     // ---- Checklist panel (hover OR selected) ----
     function pickRowIndexForChecklist(){
-      if(HOVER_INDEX>=0) return HOVER_INDEX; // 7) hover updates panel
+      if(HOVER_INDEX>=0) return HOVER_INDEX; // hover updates panel
       if(SELECTED.size>=1) return [...SELECTED][0];
       return -1;
     }
@@ -757,8 +756,7 @@
       const bestText = bestIdx>=0 ? (ROWS[idx][bestIdx]||"") : "";
       const recText  = recIdx>=0  ? (ROWS[idx][recIdx]||"")  : "";
       const linesToLis = (txt)=>{
-        // 8 & 9) remove bullets; number lines
-        const cleaned = cleanBulletLines(txt||"");
+        const cleaned = cleanBulletLines(txt||""); // remove bullets, number lines
         const lines = String(cleaned).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
         if(lines.length===0) return ["(none)"];
         return lines;
