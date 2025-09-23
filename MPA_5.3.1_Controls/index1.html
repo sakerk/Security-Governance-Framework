@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MPA 5.3.1 Controls </title>
+  <title>MPA 5.3.1</title>
   <style>
     :root{
       --bg:#0b0f14; --panel:#0f172a; --muted:#93a1b1; --text:#e6edf3; --line:#1f2937;
@@ -25,7 +25,9 @@
     table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
     th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
     td{white-space:pre-wrap}
-    thead th{position:sticky;top:0;background:#0f172a;z-index:1;user-select:none}
+    thead th{position:sticky;top:0;background:#0f172a;z-index:2;user-select:none}
+    thead .filters th{position:sticky;top:36px; background:#0e1525; z-index:2; padding:6px 8px; border-bottom:1px solid #172233}
+    thead .filters input{width:100%; box-sizing:border-box; padding:6px 8px; border-radius:8px; border:1px solid #263241; background:#0b1220; color:var(--text); font-size:12px}
     tbody tr.hide{display:none}
     tbody tr.selected td{background:var(--sel)}
     tbody tr:hover td{background:var(--hover)}
@@ -38,7 +40,7 @@
     .sortIndicator{font-size:12px;color:#9aa6b2}
     .hide-col{display:none!important}
 
-    /* Controls */
+    /* Controls – icons-only (Octicon-ish) */
     .controls{display:flex;gap:6px;align-items:center}
     .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid #27415f;background:#0f213c;color:#dbeafe;border-radius:10px;cursor:pointer}
     .iconbtn[disabled]{opacity:.5;cursor:not-allowed}
@@ -47,7 +49,6 @@
 
     /* Columns dropdown */
     .columnsWrap,.modeWrap{display:flex;gap:8px;align-items:center;position:relative}
-    .colsBtn{white-space:nowrap}
     .colsPanel{display:none;position:absolute;top:42px;right:0;z-index:1000;min-width:260px;max-height:60vh;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
     .colsPanel.open{display:block}
     .colsPanel label{display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer}
@@ -95,17 +96,16 @@
 <body>
   <div class="app">
     <header class="topbar">
-      <h1 id="pageTitle" class="title">Tool Disclosure List</h1>
+      <h1 id="pageTitle" class="title">MPA 5.3.1</h1>
 
-      <div class="modeWrap" title="Choose file type to view/save">
-        <div class="seg" role="tablist" aria-label="View mode">
-          <button id="modeMd" role="tab" aria-selected="true">Markdown</button>
-          <button id="modeJson" role="tab" aria-selected="false">JSON</button>
-        </div>
+      <div class="seg" role="tablist" aria-label="View mode">
+        <button id="modeMd" role="tab" aria-selected="true">MD</button>
+        <button id="modeJson" role="tab" aria-selected="false">JSON</button>
       </div>
 
       <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search table" />
 
+      <!-- Columns -->
       <div class="columnsWrap">
         <button id="colsBtn" class="iconbtn" title="Columns" aria-haspopup="true" aria-expanded="false">
           <!-- funnel icon -->
@@ -114,18 +114,19 @@
         <div id="colsPanel" class="colsPanel" role="dialog" aria-label="Toggle columns"></div>
       </div>
 
+      <!-- Icon controls -->
       <div class="controls">
         <!-- Add -->
         <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
-          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
+          <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
         </button>
         <!-- Edit -->
         <button id="editBtn" class="iconbtn" title="Edit selected row" aria-label="Edit selected row" disabled>
-          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
+          <svg class="icon" viewBox="0 0 16 16"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
         </button>
         <!-- Copy -->
         <button id="copyBtn" class="iconbtn" title="Copy selected row(s)" aria-label="Copy selected row(s)" disabled>
-          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.75 2A1.75 1.75 0 0 0 2 3.75v7.5C2 12.216 2.784 13 3.75 13h5.5A1.75 1.75 0 0 0 11 11.25v-7.5C11 2.784 10.216 2 9.25 2h-5.5Zm0 1.5h5.5a.25.25 0 0 1 .25.25v7.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25v-7.5a.25.25 0 0 1 .25-.25ZM13 4.75a.75.75 0 0 1 1.5 0v7.5A2.75 2.75 0 0 1 11.75 15h-7.5a.75.75 0 0 1 0-1.5h7.5c.69 0 1.25-.56 1.25-1.25v-7.5Z"/></svg>
+          <svg class="icon" viewBox="0 0 16 16"><path d="M3.75 2A1.75 1.75 0 0 0 2 3.75v7.5C2 12.216 2.784 13 3.75 13h5.5A1.75 1.75 0 0 0 11 11.25v-7.5C11 2.784 10.216 2 9.25 2h-5.5Zm0 1.5h5.5a.25.25 0 0 1 .25.25v7.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25v-7.5a.25.25 0 0 1 .25-.25ZM13 4.75a.75.75 0 0 1 1.5 0v7.5A2.75 2.75 0 0 1 11.75 15h-7.5a.75.75 0 0 1 0-1.5h7.5c.69 0 1.25-.56 1.25-1.25v-7.5Z"/></svg>
         </button>
 
         <select id="fmt" class="select" aria-label="Export format">
@@ -134,7 +135,7 @@
           <option value="json">JSON</option>
         </select>
         <button id="exportBtn" class="iconbtn" title="Export">
-          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>
+          <svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>
         </button>
       </div>
 
@@ -165,20 +166,25 @@
     </div>
   </div>
 
-  <!-- Add/Edit Row Modal -->
+  <!-- Add/Edit Row Modal (icons only) -->
   <div id="addModal" class="modalBackdrop" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal" role="document">
       <header>
         <h2 id="formTitle">Add Row</h2>
-        <button id="addClose" class="iconbtn" aria-label="Close"><svg class="icon" viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 0 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 0 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 1 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z"/></svg></button>
+        <!-- Exit -->
+        <button id="addClose" class="iconbtn" aria-label="Close">
+          <svg class="icon" viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 0 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 0 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 1 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z"/></svg>
+        </button>
       </header>
       <div class="content">
         <form id="addForm"><div id="addGrid" class="grid"></div><p class="help">All fields are optional.</p></form>
       </div>
       <footer>
         <div id="addMsg" class="msg" aria-live="polite"></div>
-        <button id="addCancel" class="iconbtn">Cancel</button>
-        <button id="addSave" class="iconbtn" style="border-color:#2d4c7b;background:#13305a">Save</button>
+        <!-- Save -->
+        <button id="addSave" class="iconbtn" title="Save">
+          <svg class="icon" viewBox="0 0 16 16"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25V5.06c0-.464-.184-.909-.513-1.237L12.176 1.51A1.75 1.75 0 0 0 10.94 1H2.75ZM10 2.5h.94c.2 0 .39.079.53.22l2.06 2.06V12.25a.25.25 0 0 1-.25.25H2.75a.25.25 0 0 1-.25-.25v-8.5a.25.25 0 0 1 .25-.25H10V6a1 1 0 1 0 2 0V2.5Z"/></svg>
+        </button>
       </footer>
     </div>
   </div>
@@ -195,18 +201,21 @@
     const VIS_KEY   = (mode)=>`colVisible:${mode}`;
     const WIDTH_KEY = (mode)=>`colWidths:${mode}`;
 
+    // Default MD headers fallback
     const DEFAULT_HEADERS = [
       "Tool Name","License Type","Tool Type","Tool Category","Hosting Model",
       "Risk Level","Output Handling Category","Usage Description","Official Website","Approval Status"
     ];
 
     // ---- State ----
-    let HEADERS=[], ROWS=[], FILES=[]; // FILES[i] = {path, sha, name, url}
-    const SELECTED = new Set();
+    let HEADERS=[], ROWS=[], FILES=[];
+    const SELECTED = new Set(); // multi-select OFF by default; use Shift to multi-select
     let COL_VISIBLE=[], COL_WIDTHS=[];
     let INDEX_ROWS=[];
     let SORT_COL=-1, SORT_DIR=1;
     let EDIT_INDEX = -1;
+    let FILTERS = []; // per-column filter strings
+    let HOVER_INDEX = -1;
 
     // ---- GitHub helpers ----
     const ghContentsUrl = (dir)=>`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(dir)}?ref=${encodeURIComponent(GH_BRANCH)}`;
@@ -279,14 +288,19 @@
       return null;
     }
 
-    // ---- JSON flattening ----
+    // ---- JSON flattening + cleanup ----
     const isObj = (v)=>v && typeof v==='object' && !Array.isArray(v);
     function cleanBulletLines(text){
       if(text==null) return "";
       const raw=String(text);
       const lines=raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
       if(lines.length<=1) return raw.trim();
-      const cleaned=lines.map(l=>l.replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,""));
+      const cleaned=lines.map(l=>l
+        .replace(/^[-*•–—]\s+/,"")
+        .replace(/^\d+[\.\)]\s+/,"")
+        .replace(/^\(\d+\)\s+/,"")
+        .replace(/^- \[[ xX]\]\s+/,"")
+      );
       return cleaned.map((l,i)=>`${i+1}. ${l}`).join("\n");
     }
     function flattenJson(obj){
@@ -306,25 +320,25 @@
       return out;
     }
 
-    // ---- UI helpers ----
+    // ---- helpers for columns / defaults ----
     function norm(s){ return String(s||"").trim().toLowerCase().replace(/[:]/g,""); }
     const isBestCol = (h)=> norm(h)==="best practices";
     const isRecCol  = (h)=> norm(h)==="additional recommendations";
     const JSON_META = new Set(["document_name","owner","framework","version","date"]);
 
     function hideDefaultsIfFresh(){
-      // Only apply defaults if we don't already have saved visibility for this mode.
+      // Only if no saved visibility for current mode
       const saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
       if(saved) return;
       COL_VISIBLE = HEADERS.map(h=>{
         const n = norm(h);
         if(isBestCol(h) || isRecCol(h)) return false; // always hidden by default
-        if(VIEW_MODE==="json" && JSON_META.has(n)) return false;
+        if(VIEW_MODE==="json" && JSON_META.has(n)) return false; // hide JSON meta by default
         return true;
       });
     }
 
-    // ---- Render table ----
+    // ---- render table (with filter row) ----
     function renderTable(headers, rows){
       const tbl = document.getElementById("sheet");
       tbl.innerHTML="";
@@ -332,21 +346,27 @@
       const selCol=document.createElement("col"); selCol.className="col-sel"; colgroup.appendChild(selCol);
       tbl.appendChild(colgroup);
 
-      const thead=document.createElement("thead"); const trh=document.createElement("tr");
+      const thead=document.createElement("thead");
+
+      // Header row
+      const trh=document.createElement("tr");
       const thSel=document.createElement("th"); thSel.className="selCol";
       const master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
-      master.addEventListener("change",()=>toggleSelectVisible(master.checked)); thSel.appendChild(master); trh.appendChild(thSel);
+      master.addEventListener("change",()=>toggleSelectVisible(master.checked,true)); // master can multi-select
+      thSel.appendChild(master); trh.appendChild(thSel);
 
       headers.forEach((h,i)=>{
         const th=document.createElement("th"); th.draggable=true; th.dataset.col=String(i);
         const span=document.createElement("span"); span.className="headerInner"; span.textContent=h||("Column "+(i+1));
         span.addEventListener("click",()=>onSortClick(i)); th.appendChild(span);
         const si=document.createElement("span"); si.className="sortIndicator"; si.textContent=(SORT_COL===i?(SORT_DIR===1?"▲":"▼"):""); span.appendChild(si);
+
         const handle=document.createElement("div"); handle.className="resizer";
         handle.addEventListener("mousedown",startResize.bind(null,i));
         handle.addEventListener("dblclick",autoFitColumn.bind(null,i));
         th.appendChild(handle);
 
+        // Drag reorder
         th.addEventListener("dragstart",(ev)=>{ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",i); });
         th.addEventListener("dragend",()=>th.classList.remove("dragging"));
         th.addEventListener("dragover",(ev)=>ev.preventDefault());
@@ -357,14 +377,30 @@
       });
       thead.appendChild(trh);
 
+      // Filters row (per-column filtering)
+      const trf=document.createElement("tr"); trf.className="filters";
+      const thfSel=document.createElement("th"); thfSel.className="selCol"; trf.appendChild(thfSel);
+      FILTERS = new Array(headers.length).fill("");
+      headers.forEach((h,i)=>{
+        const th=document.createElement("th"); th.dataset.col=String(i);
+        const inp=document.createElement("input"); inp.type="search"; inp.placeholder="Filter…";
+        inp.addEventListener("input",()=>{ FILTERS[i]=inp.value.trim().toLowerCase(); applySearchAndFilters(); });
+        th.appendChild(inp); trf.appendChild(th);
+      });
+      thead.appendChild(trf);
+
       const tbody=document.createElement("tbody");
       rows.forEach((r,idx)=>{
         const tr=document.createElement("tr"); tr.dataset.index=String(idx);
-        tr.addEventListener("click",(e)=>{ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); cb.checked=!cb.checked; toggleRow(idx,tr,cb.checked); });
+        // Click or checkbox: single-select unless Shift is held
+        tr.addEventListener("click",(e)=>{ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); const multi=e.shiftKey; const next=!cb.checked; setRowSelection(idx, next, multi); });
+        tr.addEventListener("mouseenter",()=>{ HOVER_INDEX=idx; updateChecklistPanel(); });
+        tr.addEventListener("mouseleave",()=>{ HOVER_INDEX=-1; updateChecklistPanel(); });
 
         const tdSel=document.createElement("td"); tdSel.className="selCol";
         const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=SELECTED.has(idx);
-        cb.addEventListener("change",()=>toggleRow(idx,tr,cb.checked)); tdSel.appendChild(cb); tr.appendChild(tdSel);
+        cb.addEventListener("click",(e)=>{ e.stopPropagation(); setRowSelection(idx, e.target.checked, e.shiftKey); });
+        tdSel.appendChild(cb); tr.appendChild(tdSel);
 
         r.forEach((v,i)=>{ const td=document.createElement("td"); td.dataset.col=String(i); td.textContent=(v==null?"":v); tr.appendChild(td); });
 
@@ -374,21 +410,79 @@
       tbl.appendChild(thead); tbl.appendChild(tbody);
 
       restoreColState(); hideDefaultsIfFresh(); applyColumnVisibility(true); applyColumnWidths();
-      buildIndexRows(); updateCounts(); buildColumnsPanel(); updateActionButtons(); updateChecklistPanel();
+      buildIndexRows(); applySearchAndFilters(); updateCounts(); buildColumnsPanel(); updateActionButtons(); updateChecklistPanel();
+    }
+
+    // ---- selection logic (single by default; Shift enables multi) ----
+    function setRowSelection(idx, on, multi){
+      if(!multi){ // clear others first
+        // uncheck all currently selected
+        const prev = Array.from(SELECTED);
+        SELECTED.clear();
+        prev.forEach(i=>{
+          const tr = document.querySelector(`#sheet tbody tr[data-index="${i}"]`);
+          if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
+        });
+      }
+      const tr = document.querySelector(`#sheet tbody tr[data-index="${idx}"]`);
+      if(on){ SELECTED.add(idx); tr?.classList.add("selected"); tr?.querySelector('td.selCol input')?.setAttribute("checked","checked"); }
+      else  { SELECTED.delete(idx); tr?.classList.remove("selected"); tr?.querySelector('td.selCol input')?.removeAttribute("checked"); }
+      updateCounts(); updateActionButtons(); updateChecklistPanel();
+    }
+    function toggleSelectVisible(on, forceMulti){
+      const visibleRows = Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)"));
+      if(!forceMulti){ // respect single-select default
+        if(visibleRows.length){ const idx=+visibleRows[0].dataset.index; setRowSelection(idx, true, false); }
+        return;
+      }
+      visibleRows.forEach(tr=>{
+        const idx=+tr.dataset.index;
+        const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=on;
+        if(on){ SELECTED.add(idx); tr.classList.add("selected"); } else { SELECTED.delete(idx); tr.classList.remove("selected"); }
+      });
+      updateCounts(); updateActionButtons(); updateChecklistPanel();
     }
 
     function updateActionButtons(){
-      const edit = document.getElementById("editBtn");
-      const copy = document.getElementById("copyBtn");
-      const count = SELECTED.size;
-      edit.disabled = count !== 1;
-      copy.disabled = count < 1;
+      document.getElementById("editBtn").disabled = SELECTED.size !== 1;
+      document.getElementById("copyBtn").disabled = SELECTED.size < 1;
     }
+
+    // ---- Search + per-column filters ----
+    function buildIndexRows(){
+      const bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
+      INDEX_ROWS=bodyRows.map(tr=>{
+        const texts = [];
+        tr.querySelectorAll('td[data-col]').forEach(td=>texts.push(td.textContent.toLowerCase()));
+        return { tr, texts };
+      });
+    }
+    function applySearchAndFilters(){
+      const q = document.getElementById("q").value.trim().toLowerCase();
+      const terms = q.split(/\s+/).filter(Boolean);
+      INDEX_ROWS.forEach(({tr, texts})=>{
+        const idx = +tr.dataset.index;
+        // global terms across any column
+        const globalHit = terms.every(t => texts.some(x => x.includes(t)));
+        // per-column filters (only consider visible columns' filters if we want, but user asked per-column; apply regardless)
+        const perColHit = FILTERS.every((f,i)=>{
+          if(!f) return true;
+          const cell = texts[i] || "";
+          return cell.includes(f);
+        });
+        tr.classList.toggle("hide", !(globalHit && perColHit));
+      });
+      updateCounts();
+    }
+    (function setupSearchOnce(){
+      const q=document.getElementById("q");
+      const debounce=(fn,ms)=>{ let t; return ()=>{ clearTimeout(t); t=setTimeout(fn,ms); }; };
+      q.addEventListener("input", debounce(applySearchAndFilters,120));
+    })();
 
     // ---- Sorting / reordering ----
     function onSortClick(i){
       if(SORT_COL===i) SORT_DIR=-SORT_DIR; else { SORT_COL=i; SORT_DIR=1; }
-      // sort rows & FILES together
       const zipped = ROWS.map((row,idx)=>({row, file:FILES[idx]}));
       zipped.sort((A,B)=>{
         const va=(A.row[i]??"").toString().toLowerCase();
@@ -397,14 +491,19 @@
       });
       ROWS = zipped.map(z=>z.row);
       FILES= zipped.map(z=>z.file);
+      // keep selection indexes in new order (clear to avoid index confusion)
       SELECTED.clear();
       renderTable(HEADERS, ROWS);
     }
     function reorderColumns(from,to){
       const move=(arr)=>{ const x=arr.splice(from,1)[0]; arr.splice(to,0,x); };
       move(HEADERS); move(COL_VISIBLE); move(COL_WIDTHS);
+      FILTERS = moveFilters(FILTERS, from, to);
       ROWS = ROWS.map(r=>{ const x=r.slice(); const cell=x.splice(from,1)[0]; x.splice(to,0,cell); return x; });
       renderTable(HEADERS, ROWS);
+    }
+    function moveFilters(arr, from, to){
+      const x = arr.slice(); const v = x.splice(from,1)[0]; x.splice(to,0,v); return x;
     }
 
     // ---- Column visibility/widths ----
@@ -412,7 +511,10 @@
       const ths=document.querySelectorAll("#sheet thead th[data-col]");
       const tds=document.querySelectorAll("#sheet tbody td[data-col]");
       const cols=document.querySelectorAll("#colgroup col[data-col]");
+      const filtThs=document.querySelectorAll("#sheet thead tr.filters th[data-col]");
+
       ths.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hide-col", hide); });
+      filtThs.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hide-col", hide); });
       tds.forEach(td=>{ const i=+td.dataset.col; const hide=COL_VISIBLE[i]===false; td.classList.toggle("hide-col", hide); });
       cols.forEach(col=>{ const i=+col.dataset.col; const hide=COL_VISIBLE[i]===false; col.style.width = hide ? "0px" : (COL_WIDTHS[i] ? COL_WIDTHS[i]+"px" : ""); });
       if(save) saveColState();
@@ -452,40 +554,17 @@
       maxW=Math.min(Math.max(80, maxW+12), 800); COL_WIDTHS[i]=maxW; applyColumnWidths();
     }
 
-    // ---- Selection / search ----
-    function toggleRow(idx,tr,on){ if(on){ SELECTED.add(idx); tr.classList.add("selected"); } else { SELECTED.delete(idx); tr.classList.remove("selected"); } updateCounts(); updateActionButtons(); updateChecklistPanel(); }
-    function toggleSelectVisible(on){
-      const rows=Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)"));
-      rows.forEach(tr=>{ const idx=+tr.dataset.index; const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=on; toggleRow(idx,tr,on); });
-    }
-    function buildIndexRows(){
-      const bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
-      INDEX_ROWS=bodyRows.map(tr=>{
-        const text=Array.from(tr.querySelectorAll('td[data-col]:not(.hide-col)')).map(td=>td.textContent.toLowerCase()).join(" ");
-        return {tr,text};
-      });
-    }
-    function setupSearch(){
-      const q=document.getElementById("q");
-      const debounce=(fn,ms)=>{ let t; return ()=>{ clearTimeout(t); t=setTimeout(fn,ms); }; };
-      const run=()=>{ const val=q.value.trim().toLowerCase(); const terms=val.split(/\s+/).filter(Boolean);
-        INDEX_ROWS.forEach(({tr,text})=>{ const hit=terms.every(t=>text.includes(t)); tr.classList.toggle("hide", !hit); }); updateCounts();
-      };
-      q.addEventListener("input", debounce(run,120));
-    }
-    function updateCounts(){ const total=ROWS.length; const visible=document.querySelectorAll("#sheet tbody tr:not(.hide)").length; const sel=SELECTED.size; document.getElementById("count").textContent=(visible===total?`${total} rows`:`Showing ${visible} of ${total}`)+` • ${sel} selected`; }
-
     // ---- Columns dropdown ----
     function buildColumnsPanel(){
       const panel=document.getElementById("colsPanel"); panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation(),{once:true});
       HEADERS.forEach((h,i)=>{
         const label=document.createElement("label"); const cb=document.createElement("input"); cb.type="checkbox";
         cb.checked = COL_VISIBLE[i] !== false;
-        cb.addEventListener("change",()=>{ COL_VISIBLE[i]=cb.checked; applyColumnVisibility(true); buildIndexRows(); });
+        cb.addEventListener("change",()=>{ COL_VISIBLE[i]=cb.checked; applyColumnVisibility(true); buildIndexRows(); applySearchAndFilters(); });
         const txt=document.createElement("span"); txt.textContent=h||("Column "+(i+1));
         label.appendChild(cb); label.appendChild(txt); panel.appendChild(label);
       });
-      const note=document.createElement("div"); note.className="note"; note.textContent="Tip: Drag headers to reorder. Click to sort. Double-click right edge to auto-fit."; panel.appendChild(note);
+      const note=document.createElement("div"); note.className="note"; note.textContent="Tip: Drag headers to reorder. Click header to sort. Double-click header edge to auto-fit."; panel.appendChild(note);
     }
     (function setupColumnsUIOnce(){
       const btn=document.getElementById("colsBtn"); const panel=document.getElementById("colsPanel");
@@ -504,19 +583,23 @@
     function toCSV(headers,rows){ function esc(v){ if(v==null)v=""; v=String(v); if(/[\",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
       const all=[headers,...rows]; return all.map(r=>r.map(esc).join(",")).join("\r\n")+"\r\n"; }
     function toJSONArray(headers,rows){ return rows.map(r=>{ const o={}; headers.forEach((h,i)=>o[h]=r[i]??""); return o; }); }
-    function visibleCols(){ const idxs=[]; COL_VISIBLE.forEach((v,i)=>{ if(v!==false) idxs.push(i); }); return idxs; }
-    function filterCols(headers,rows){ const cols=visibleCols(); return { fh: cols.map(i=>headers[i]), fr: rows.map(r=>cols.map(i=>r[i])) }; }
+    function download(name,text,mime){ const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+
     document.getElementById("exportBtn").addEventListener("click",()=>{
       if(!HEADERS.length) return;
       const fmt=document.getElementById("fmt").value;
-      const anySel=SELECTED.size>0;
-      const rows = anySel ? Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i])
-                          : Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)")).map(tr=>ROWS[+tr.dataset.index]);
+      const rows = (SELECTED.size>0)
+        ? Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i])
+        : Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)")).map(tr=>ROWS[+tr.dataset.index]);
       const {fh,fr}=filterCols(HEADERS, rows);
-      if(fmt==="md"){ const md=toMarkdown(fh,fr,"Tool Disclosure List"); download("tool-disclosure-list.md", md, "text/markdown"); }
-      else if(fmt==="csv"){ const csv=toCSV(fh,fr); download("tool-disclosure-list.csv", csv, "text/csv"); }
-      else { const json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n"; download("tool-disclosure-list.json", json, "application/json"); }
+      if(fmt==="md"){ const md=toMarkdown(fh,fr,"MPA 5.3.1"); download("mpa-5.3.1.md", md, "text/markdown"); }
+      else if(fmt==="csv"){ const csv=toCSV(fh,fr); download("mpa-5.3.1.csv", csv, "text/csv"); }
+      else { const json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n"; download("mpa-5.3.1.json", json, "application/json"); }
     });
+
+    function visibleCols(){ const idxs=[]; COL_VISIBLE.forEach((v,i)=>{ if(v!==false) idxs.push(i); }); return idxs; }
+    function filterCols(headers,rows){ const cols=visibleCols(); return { fh: cols.map(i=>headers[i]), fr: rows.map(r=>cols.map(i=>r[i])) }; }
+
     document.getElementById("copyBtn").addEventListener("click", async ()=>{
       if(!HEADERS.length || SELECTED.size<1) return;
       const rows = Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i]);
@@ -524,13 +607,13 @@
       const md = toMarkdown(fh,fr,"");
       try{ await navigator.clipboard.writeText(md); toast("Copied to clipboard"); }catch{ toast("Copy failed"); }
     });
-    function download(name,text,mime){ const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
     function toast(msg){ const el=document.getElementById("count"); el.textContent=msg; setTimeout(updateCounts,1200); }
 
-    // ---- Add / Edit modal ----
+    // ---- Add / Edit modal (icons only) ----
     const addModal = ()=>document.getElementById("addModal");
     const addGrid  = ()=>document.getElementById("addGrid");
     const addMsg   = ()=>document.getElementById("addMsg");
+
     function openForm(isEdit=false){
       if(!HEADERS.length){ alert("Data not loaded yet."); return; }
       document.getElementById("formTitle").textContent = isEdit ? "Edit Row" : "Add Row";
@@ -545,10 +628,10 @@
     }
     function closeForm(){ addModal().classList.remove("open"); addModal().setAttribute("aria-hidden","true"); EDIT_INDEX=-1; }
     function setStatus(t,ok){ const el=addMsg(); el.textContent=t||""; el.classList.toggle("ok", ok===true); el.classList.toggle("err", ok===false); }
+
     document.getElementById("addBtn").addEventListener("click",()=>openForm(false));
     document.getElementById("editBtn").addEventListener("click",()=>{ if(SELECTED.size!==1){ alert("Select exactly one row to edit."); return; } openForm(true); });
     document.getElementById("addClose").addEventListener("click",closeForm);
-    document.getElementById("addCancel").addEventListener("click",(e)=>{ e.preventDefault(); closeForm(); });
 
     document.getElementById("addSave").addEventListener("click", async (e)=>{
       e.preventDefault();
@@ -583,18 +666,17 @@
           ROWS.push(values);
         }
         renderTable(HEADERS, ROWS);
-        setStatus("Saved", true); setTimeout(closeForm, 400);
+        setStatus("Saved", true); setTimeout(closeForm, 350);
       }catch(err){
         console.warn("Write failed:", err);
         const fname = path.split("/").pop();
         const mime = VIEW_MODE==="json" ? "application/json" : "text/markdown";
-        // Fallback download
         const blob=new Blob([content],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
         setStatus("Downloaded (add to repo /data manually)", true);
       }
     });
 
-    // ---- Loaders ----
+    // ---- Loaders (MD / JSON) ----
     async function loadMd(){
       const items = await ghList(DATA_DIR);
       const list = items.filter(it=>it.type==="file" && /\.md$/i.test(it.name))
@@ -609,13 +691,12 @@
           const text=await fetchText(url);
           const parsed=parseFirstTable(text); if(!parsed) continue;
           if(HEADERS.length===0){ HEADERS=parsed.headers.length?parsed.headers:DEFAULT_HEADERS.slice(); COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null); }
-          if(parsed.rows && parsed.rows.length){ const row=parsed.rows[0]; ROWS.push( HEADERS.map((_,idx)=>row[idx]??"") ); FILES.push({name,url,path,sha}); }
+          if(parsed.rows && parsed.rows.length){ const row=parsed.rows[0]; ROWS.push( HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??"")) ); FILES.push({name,url,path,sha}); }
           countEl.textContent=`Loading… ${i+1}/${list.length}`;
         }catch(e){ console.warn("Skip MD",name,e); }
       }
       if(HEADERS.length===0) HEADERS=DEFAULT_HEADERS.slice();
       renderTable(HEADERS, ROWS);
-      setupSearch();
     }
 
     async function loadJson(){
@@ -639,7 +720,6 @@
       }
       if(HEADERS.length===0) HEADERS=DEFAULT_HEADERS.slice();
       renderTable(HEADERS, ROWS);
-      setupSearch();
     }
 
     // ---- Mode switch ----
@@ -660,19 +740,26 @@
       }
     }
 
-    // ---- Checklist panel ----
+    // ---- Checklist panel (hover OR selected) ----
+    function pickRowIndexForChecklist(){
+      if(HOVER_INDEX>=0) return HOVER_INDEX; // 7) hover updates panel
+      if(SELECTED.size>=1) return [...SELECTED][0];
+      return -1;
+    }
     function updateChecklistPanel(){
       const bestUL=document.getElementById("bestList");
       const recUL =document.getElementById("recList");
       bestUL.innerHTML=""; recUL.innerHTML="";
-      if(SELECTED.size<1){ bestUL.innerHTML="<li><em>Select a row…</em></li>"; recUL.innerHTML="<li><em>Select a row…</em></li>"; return; }
-      const idx=[...SELECTED][0];
+      const idx = pickRowIndexForChecklist();
+      if(idx<0){ bestUL.innerHTML="<li><em>Hover or select a row…</em></li>"; recUL.innerHTML="<li><em>Hover or select a row…</em></li>"; return; }
       const bestIdx = HEADERS.findIndex(isBestCol);
       const recIdx  = HEADERS.findIndex(isRecCol);
       const bestText = bestIdx>=0 ? (ROWS[idx][bestIdx]||"") : "";
       const recText  = recIdx>=0  ? (ROWS[idx][recIdx]||"")  : "";
       const linesToLis = (txt)=>{
-        const lines = String(txt||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+        // 8 & 9) remove bullets; number lines
+        const cleaned = cleanBulletLines(txt||"");
+        const lines = String(cleaned).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
         if(lines.length===0) return ["(none)"];
         return lines;
       };
