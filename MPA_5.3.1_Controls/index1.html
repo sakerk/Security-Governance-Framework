@@ -66,22 +66,35 @@
     .iconbtn:hover{background:#15325d}
     .icon{width:16px;height:16px;fill:currentColor}
 
-    /* Columns / Side fields dropdowns */
+    /* Dropdown panels (no checkboxes, use toggle buttons) */
     .columnsWrap,.modeWrap,.sideFieldsWrap{display:flex;gap:8px;align-items:center;position:relative}
-    .colsPanel{display:none;position:absolute;top:42px;right:0;z-index:1000;min-width:260px;max-height:60vh;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .colsPanel{display:none;position:absolute;top:42px;right:0;z-index:1000;min-width:280px;max-height:60vh;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
     .colsPanel.open{display:block}
-    .colsPanel label{display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer}
+    .panelRow{display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:8px}
+    .panelRow:hover{background:#0f213c}
+    .panelRow .label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .colsPanel .note{margin-top:8px;color:var(--muted);font-size:12px}
-    .select{appearance:none;border:1px solid #27415f;background:#0f213c;color:#dbeafe;padding:10px 12px;border-radius:12px;cursor:pointer;min-width:150px}
+
+    /* Toggle pill button */
+    .togglebtn{
+      position:relative; width:44px; height:24px; border-radius:999px;
+      border:1px solid #27415f; background:#15233e; cursor:pointer;
+    }
+    .togglebtn::after{
+      content:""; position:absolute; top:2px; left:2px; width:20px; height:20px;
+      background:#dbeafe; border-radius:50%; transition:left .15s ease;
+    }
+    .togglebtn[aria-pressed="true"]{ background:#2c5fa8; }
+    .togglebtn[aria-pressed="true"]::after{ left:22px; }
 
     /* Right attribute pane + gutter */
     .gutter{width:6px;cursor:col-resize;background:linear-gradient(to right, transparent 0, transparent 2px, #1f2937 2px, #1f2937 4px, transparent 4px)}
     .side{width:var(--side-width);min-width:260px;max-width:70vw;border-left:1px solid var(--line);background:#0b1220;padding:10px;overflow:auto}
     .side h2{margin:0 0 8px 0;font-size:14px}
     .side .section{margin-bottom:14px}
-    .checklist{list-style:none;margin:0;padding:0}
-    .checklist li{display:flex;align-items:flex-start;gap:8px;padding:6px 6px}
-    .checklist input{margin-top:2px}
+    /* Attribute Panel numbered list (no checkboxes) */
+    .attrlist{ list-style:decimal; margin:6px 0 0 20px; padding:0; }
+    .attrlist li{ padding:4px 2px; }
 
     /* Segmented view mode */
     .seg{display:inline-flex;border:1px solid #27415f;border-radius:12px;overflow:hidden}
@@ -172,9 +185,8 @@
       <!-- Count -->
       <span id="count" class="count" aria-live="polite"></span>
 
-      <!-- Attribute Panel toggle (moved to FAR RIGHT) -->
+      <!-- Attribute Panel toggle (far right) -->
       <button id="toggleSideBtn" class="iconbtn" title="Show/Hide Attribute Panel" aria-label="Show/Hide Attribute Panel" aria-pressed="true" style="margin-left:6px;">
-        <!-- sidebar-right icon -->
         <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25v-8.5C15 2.784 14.216 2 13.25 2H2.75Zm7.75 1.5h2.75a.25.25 0 0 1 .25.25v8.5a.25.25 0 0 1-.25.25H10.5V3.5Zm-1.5 0H2.75a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25H9V3.5Z"/></svg>
       </button>
     </header>
@@ -230,9 +242,8 @@
     const VIS_KEY        = (mode)=>`colVisible:${mode}`;
     const WIDTH_KEY      = (mode)=>`colWidths:${mode}`;
     const SIDE_VISIBLE_KEY = "sideVisible";
-    const SIDE_COLS_KEY  = (mode)=>`sideCols:${mode}`; // stores array of header names
+    const SIDE_COLS_KEY_FN  = (mode)=>`sideCols:${mode}`; // stores array of header names
 
-    // Default MD headers fallback
     const DEFAULT_HEADERS = [
       "Tool Name","License Type","Tool Type","Tool Category","Hosting Model",
       "Risk Level","Output Handling Category","Usage Description","Official Website","Approval Status"
@@ -378,7 +389,6 @@
     }
 
     // ---- Side (Attribute) Panel column config ----
-    const SIDE_COLS_KEY_FN = (mode)=>`sideCols:${mode}`;
     function restoreSideCols(){
       const saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
       if(saved){
@@ -647,17 +657,33 @@
       applyColumnWidths();
     }
 
-    // ---- Columns dropdown ----
+    // ---- Columns dropdown (no checkboxes; toggle pill) ----
     function buildColumnsPanel(){
-      const panel=document.getElementById("colsPanel"); panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation(),{once:true});
+      const panel=document.getElementById("colsPanel");
+      panel.innerHTML="";
+      panel.addEventListener("click",(e)=>e.stopPropagation());
+
       HEADERS.forEach((h,i)=>{
-        const label=document.createElement("label"); const cb=document.createElement("input"); cb.type="checkbox";
-        cb.checked = COL_VISIBLE[i] !== false;
-        cb.addEventListener("change",()=>{ COL_VISIBLE[i]=cb.checked; applyColumnVisibility(true); buildIndexRows(); applySearchAndFilters(); });
-        const txt=document.createElement("span"); txt.textContent=h||("Column "+(i+1));
-        label.appendChild(cb); label.appendChild(txt); panel.appendChild(label);
+        const row=document.createElement("div"); row.className="panelRow";
+        const label=document.createElement("span"); label.className="label"; label.textContent=h||("Column "+(i+1));
+        const btn=document.createElement("button"); btn.className="togglebtn";
+        const isOn = COL_VISIBLE[i] !== false;
+        btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+        btn.title = (isOn ? "Hide" : "Show") + " column";
+        btn.addEventListener("click", ()=>{
+          const now = btn.getAttribute("aria-pressed")!=="true";
+          btn.setAttribute("aria-pressed", now?"true":"false");
+          COL_VISIBLE[i] = now;
+          applyColumnVisibility(true);
+          buildIndexRows(); applySearchAndFilters();
+          btn.title = (now ? "Hide" : "Show") + " column";
+        });
+        row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
       });
-      const note=document.createElement("div"); note.className="note"; note.textContent="Table: toggle column visibility. Tip: Drag header edge to resize. Double-click edge to auto-fit. Drag headers to reorder. Click header to sort."; panel.appendChild(note);
+
+      const note=document.createElement("div"); note.className="note";
+      note.textContent="Table: toggle column visibility. Tips: drag header edge to resize (double-click to auto-fit), drag headers to reorder, click header to sort.";
+      panel.appendChild(note);
     }
     (function setupColumnsUIOnce(){
       const btn=document.getElementById("colsBtn"); const panel=document.getElementById("colsPanel");
@@ -665,18 +691,32 @@
       document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
     })();
 
-    // ---- Side panel fields dropdown ----
+    // ---- Side panel fields dropdown (no checkboxes; toggle pill) ----
     function buildSideColsPanel(){
-      const panel=document.getElementById("sideColsPanel"); panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation(),{once:true});
+      const panel=document.getElementById("sideColsPanel");
+      panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation());
+
       const chosen = new Set(SIDE_COLS);
       HEADERS.forEach((h)=>{
-        const label=document.createElement("label"); const cb=document.createElement("input"); cb.type="checkbox";
-        cb.checked = chosen.has(h);
-        cb.addEventListener("change",()=>{ if(cb.checked){ chosen.add(h); } else { chosen.delete(h); } SIDE_COLS = Array.from(chosen); saveSideCols(); updateAttributePanel(); });
-        const txt=document.createElement("span"); txt.textContent=h||"Column";
-        label.appendChild(cb); label.appendChild(txt); panel.appendChild(label);
+        const row=document.createElement("div"); row.className="panelRow";
+        const label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
+        const btn=document.createElement("button"); btn.className="togglebtn";
+        const isOn = chosen.has(h);
+        btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+        btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
+        btn.addEventListener("click", ()=>{
+          const now = btn.getAttribute("aria-pressed")!=="true";
+          btn.setAttribute("aria-pressed", now?"true":"false");
+          if(now) chosen.add(h); else chosen.delete(h);
+          SIDE_COLS = Array.from(chosen); saveSideCols(); updateAttributePanel();
+          btn.title = (now ? "Remove from" : "Add to") + " Attribute Panel";
+        });
+        row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
       });
-      const note=document.createElement("div"); note.className="note"; note.textContent="Attribute Panel: choose which columns appear on the right. (Saved per view mode.)"; panel.appendChild(note);
+
+      const note=document.createElement("div"); note.className="note";
+      note.textContent="Attribute Panel: choose which columns appear on the right. (Saved per view mode.)";
+      panel.appendChild(note);
     }
     (function setupSideColsUIOnce(){
       const btn=document.getElementById("sideColsBtn"); const panel=document.getElementById("sideColsPanel");
@@ -721,11 +761,9 @@
       const {fh,fr}=filterCols(HEADERS, rows);
 
       let text = "";
-      if(fmt==="md"){
-        text = toMarkdown(fh,fr,"");
-      } else if(fmt==="csv"){
-        text = toCSV(fh,fr);
-      } else {
+      if(fmt==="md"){ text = toMarkdown(fh,fr,""); }
+      else if(fmt==="csv"){ text = toCSV(fh,fr); }
+      else {
         const arr = toJSONArray(fh,fr);
         text = (arr.length===1 ? JSON.stringify(arr[0], null, 2) : JSON.stringify(arr, null, 2));
       }
@@ -827,7 +865,7 @@
           if(HEADERS.length===0){ HEADERS=parsed.headers.length?parsed.headers:DEFAULT_HEADERS.slice(); COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null); }
           if(parsed.rows && parsed.rows.length){
             const row=parsed.rows[0];
-            ROWS.push( HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??"")) ); // normalize for side panel
+            ROWS.push( HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??"")) );
             FILES.push({name,url,path,sha});
           }
           countEl.textContent=`Loading… ${i+1}/${list.length}`;
@@ -897,22 +935,16 @@
         const title = HEADERS[i];
         const rawText = ROWS[idx][i] || "";
         const cleaned = cleanBulletLines(rawText||"");
-        const lines = String(cleaned).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+        let lines = String(cleaned).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+        lines = lines.map(l => l.replace(/^\d+[.)]\s+/, "")); // avoid double numbering
 
         const sec = document.createElement("div"); sec.className="section";
         const strong = document.createElement("strong"); strong.textContent = title; sec.appendChild(strong);
 
-        const ul = document.createElement("ul"); ul.className="checklist";
-        if(lines.length===0){ const li=document.createElement("li"); const span=document.createElement("span"); span.textContent="(none)"; li.appendChild(span); ul.appendChild(li); }
-        else{
-          lines.forEach(line=>{
-            const li=document.createElement("li");
-            const cb=document.createElement("input"); cb.type="checkbox";
-            const span=document.createElement("span"); span.textContent=line;
-            li.appendChild(cb); li.appendChild(span); ul.appendChild(li);
-          });
-        }
-        sec.appendChild(ul);
+        const ol = document.createElement("ol"); ol.className="attrlist";
+        if(lines.length===0){ const li=document.createElement("li"); li.textContent="(none)"; ol.appendChild(li); }
+        else{ lines.forEach(line=>{ const li=document.createElement("li"); li.textContent=line; ol.appendChild(li); }); }
+        sec.appendChild(ol);
         cont.appendChild(sec);
       });
     }
