@@ -327,7 +327,6 @@
     const JSON_META = new Set(["document_name","owner","framework","version","date"]);
 
     function hideDefaultsIfFresh(){
-      // Only if no saved visibility for current mode
       const saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
       if(saved) return;
       COL_VISIBLE = HEADERS.map(h=>{
@@ -452,7 +451,7 @@
       document.getElementById("copyBtn").disabled = SELECTED.size < 1;
     }
 
-    // ---- global count (FIX) ----
+    // ---- global count ----
     function updateCounts() {
       const total = ROWS.length;
       const visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
@@ -548,6 +547,43 @@
       if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else COL_VISIBLE=HEADERS.map(()=>true);
       if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else COL_WIDTHS=HEADERS.map(()=>null);
     }catch{ COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null); } }
+
+    // ---- Resizing columns (FIX: define handlers) ----
+    let resizeState=null;
+    function startResize(i,ev){
+      ev.preventDefault();
+      const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
+      const col=document.querySelector(`#colgroup col[data-col="${i}"]`);
+      const startX=ev.clientX, startW=th.getBoundingClientRect().width;
+      resizeState={i,startX,startW,col};
+      window.addEventListener("mousemove",onResizeMove);
+      window.addEventListener("mouseup",endResize);
+      document.body.style.cursor="col-resize";
+    }
+    function onResizeMove(ev){
+      if(!resizeState) return;
+      const {i,startX,startW,col}=resizeState;
+      const w=Math.max(60, Math.round(startW+(ev.clientX-startX)));
+      COL_WIDTHS[i]=w;
+      if(col) col.style.width=w+"px";
+    }
+    function endResize(){
+      window.removeEventListener("mousemove",onResizeMove);
+      window.removeEventListener("mouseup",endResize);
+      document.body.style.cursor="";
+      resizeState=null;
+      saveColState();
+    }
+    function autoFitColumn(i){
+      const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
+      const cells=Array.from(document.querySelectorAll(`#sheet tbody td[data-col="${i}"]`));
+      const measure=el=>Math.ceil(el.getBoundingClientRect().width);
+      let maxW=measure(th);
+      cells.forEach(td=>{ maxW=Math.max(maxW, measure(td)); });
+      maxW=Math.min(Math.max(80, maxW+12), 800);
+      COL_WIDTHS[i]=maxW;
+      applyColumnWidths();
+    }
 
     // ---- Columns dropdown ----
     function buildColumnsPanel(){
