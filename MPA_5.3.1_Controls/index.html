@@ -1158,6 +1158,23 @@ function saveSideOrder(order){
     container.appendChild(sec);
   }
 }
+
+function closeAllPanels(exceptId){
+  // Close all popover panels and reset aria-expanded on known buttons
+  var panels = document.querySelectorAll(".colsPanel");
+  for(var i=0;i<panels.length;i++){
+    var p = panels[i];
+    if(exceptId && p.id === exceptId) continue;
+    p.classList.remove("open");
+  }
+  var btns = ['colsBtn','sideColsBtn','exportBtn'];
+  for(var j=0;j<btns.length;j++){
+    var b = document.getElementById(btns[j]);
+    if(b && (!exceptId || (btns[j]+'Panel') !== exceptId)) b.setAttribute('aria-expanded','false');
+  }
+}
+document.addEventListener("click", function(){ closeAllPanels(); });
+
 </script>
 </body>
 </html>
