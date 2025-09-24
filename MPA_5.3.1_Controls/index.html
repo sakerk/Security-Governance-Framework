@@ -920,7 +920,68 @@ function saveSideOrder(order){
           <div class="meta">Generated: ${new Date().toLocaleString()}</div>
           <table><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table>
           <script>window.onload=()=>{try{window.print();}catch(e){}}<\/script>
-        </body></html>`;
+        
+<script>
+(function enforceSinglePopover(){
+  var PANEL_IDS = ["colsPanel","sideColsPanel","exportPanel"];
+  var BTN_IDS   = ["colsBtn","sideColsBtn","exportBtn"];
+  function panelForBtnId(btnId){
+    if(btnId==="colsBtn") return "colsPanel";
+    if(btnId==="sideColsBtn") return "sideColsPanel";
+    if(btnId==="exportBtn") return "exportPanel";
+    return null;
+  }
+  function closeAllPanels(){
+    for(var i=0;i<PANEL_IDS.length;i++){
+      var p = document.getElementById(PANEL_IDS[i]);
+      if(p) p.classList.remove("open");
+    }
+    for(var j=0;j<BTN_IDS.length;j++){
+      var b = document.getElementById(BTN_IDS[j]);
+      if(b) b.setAttribute("aria-expanded","false");
+    }
+  }
+  // Capturing-phase click listener runs before other handlers.
+  document.addEventListener("click", function(ev){
+    // Ignore clicks on the Show/Hide Attribute Panel toggle button
+    if (ev.target.closest("#toggleSideBtn")) { return; }
+    // Determine if a toggle button was clicked
+    var clickedBtn = ev.target.closest("#colsBtn,#sideColsBtn,#exportBtn");
+    var targetPanelId = clickedBtn ? panelForBtnId(clickedBtn.id) : null;
+
+    // Defer to run after existing handlers have toggled classes (if any)
+    setTimeout(function(){
+      if(clickedBtn){
+        // Keep only the target panel open; close all others.
+        for(var i=0;i<PANEL_IDS.length;i++){
+          var id = PANEL_IDS[i];
+          var el = document.getElementById(id);
+          if(!el) continue;
+          if(id !== targetPanelId){
+            el.classList.remove("open");
+          }
+        }
+        // Update aria-expanded states: opened only if the panel is actually open
+        for(var j=0;j<BTN_IDS.length;j++){
+          var bid = BTN_IDS[j];
+          var b = document.getElementById(bid);
+          var pid = panelForBtnId(bid);
+          var p = document.getElementById(pid);
+          if(b) b.setAttribute("aria-expanded", (pid===targetPanelId && p && p.classList.contains("open")) ? "true" : "false");
+        }
+      } else {
+        // If click happened outside any panel, close all
+        var insidePanel = ev.target.closest(".colsPanel");
+        if(!insidePanel){
+          closeAllPanels();
+        }
+      }
+    },0);
+  }, true);
+})();
+</script>
+
+</body></html>`;
       const w=window.open("", "_blank");
       if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; }
       w.document.open(); w.document.write(html); w.document.close();
@@ -1173,8 +1234,71 @@ function closeAllPanels(exceptId){
     if(b && (!exceptId || (btns[j]+'Panel') !== exceptId)) b.setAttribute('aria-expanded','false');
   }
 }
-document.addEventListener("click", function(){ closeAllPanels(); });
+document.addEventListener("click", function(e){
+  if (e.target.closest(".colsPanel,#colsBtn,#sideColsBtn,#exportBtn")) return;
+  if (e.target.closest("#toggleSideBtn")) return; // do not treat the side toggle as an outside click
+  closeAllPanels();
+});
 
 </script>
+
+<script>
+(function enforceSinglePopover(){
+  var PANEL_IDS = ["colsPanel","sideColsPanel","exportPanel"];
+  var BTN_IDS   = ["colsBtn","sideColsBtn","exportBtn"];
+  function panelForBtnId(btnId){
+    if(btnId==="colsBtn") return "colsPanel";
+    if(btnId==="sideColsBtn") return "sideColsPanel";
+    if(btnId==="exportBtn") return "exportPanel";
+    return null;
+  }
+  function closeAllPanels(){
+    for(var i=0;i<PANEL_IDS.length;i++){
+      var p = document.getElementById(PANEL_IDS[i]);
+      if(p) p.classList.remove("open");
+    }
+    for(var j=0;j<BTN_IDS.length;j++){
+      var b = document.getElementById(BTN_IDS[j]);
+      if(b) b.setAttribute("aria-expanded","false");
+    }
+  }
+  // Capturing-phase click listener runs before other handlers.
+  document.addEventListener("click", function(ev){
+    // Determine if a toggle button was clicked
+    var clickedBtn = ev.target.closest("#colsBtn,#sideColsBtn,#exportBtn");
+    var targetPanelId = clickedBtn ? panelForBtnId(clickedBtn.id) : null;
+
+    // Defer to run after existing handlers have toggled classes (if any)
+    setTimeout(function(){
+      if(clickedBtn){
+        // Keep only the target panel open; close all others.
+        for(var i=0;i<PANEL_IDS.length;i++){
+          var id = PANEL_IDS[i];
+          var el = document.getElementById(id);
+          if(!el) continue;
+          if(id !== targetPanelId){
+            el.classList.remove("open");
+          }
+        }
+        // Update aria-expanded states: opened only if the panel is actually open
+        for(var j=0;j<BTN_IDS.length;j++){
+          var bid = BTN_IDS[j];
+          var b = document.getElementById(bid);
+          var pid = panelForBtnId(bid);
+          var p = document.getElementById(pid);
+          if(b) b.setAttribute("aria-expanded", (pid===targetPanelId && p && p.classList.contains("open")) ? "true" : "false");
+        }
+      } else {
+        // If click happened outside any panel, close all
+        var insidePanel = ev.target.closest(".colsPanel");
+        if(!insidePanel){
+          closeAllPanels();
+        }
+      }
+    },0);
+  }, true);
+})();
+</script>
+
 </body>
 </html>
