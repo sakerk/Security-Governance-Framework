@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Data Agnostic Viewer (DAV)</title>
 
-<!-- Optional config (either one). If absent, DAV will auto-detect from the page URL. -->
+<!-- Only load config.js. No config.json preload to avoid 404. -->
 <script src="config.js" defer></script>
-<link rel="preload" href="config.json" as="fetch" crossorigin="anonymous"/>
 
 <style>
   :root{
@@ -101,7 +100,7 @@
 
   .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
   .modalBackdrop.open{display:flex}
-  .modal{width:min(900px,92vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal{width:min(900px,92vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid --var(line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
   .modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
   .modal h2{margin:0;font-size:16px}
   .modal .content{padding:14px 16px}
@@ -164,7 +163,7 @@
     <span id="count" class="count" aria-live="polite"></span>
 
     <button id="toggleSideBtn" class="iconbtn" title="Show/Hide Attribute Panel" aria-label="Show/Hide Attribute Panel" aria-pressed="true" style="margin-left:6px;">
-      <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25v-8.5C15 2.784 14.216 2 13.25 2H2.75Zm7.75 1.5h2.75a.25.25 0 0 1 .25.25v8.5a.25.25 0 0 1-.25.25H10.5V3.5Zm-1.5 0H2.75a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25H9V3.5Z"/></svg>
+      <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A.75.75 0 0 0 15 12.25v-8.5C15 2.784 14.216 2 13.25 2H2.75Zm7.75 1.5h2.75a.25.25 0 0 1 .25.25v8.5a.25.25 0 0 1-.25.25H10.5V3.5Zm-1.5 0H2.75a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25H9V3.5Z"/></svg>
     </button>
   </header>
 
@@ -184,6 +183,7 @@
   </div>
 </div>
 
+<!-- Add/Edit Modal -->
 <div id="addModal" class="modalBackdrop" aria-hidden="true" role="dialog" aria-modal="true">
   <div class="modal" role="document">
     <header>
@@ -205,84 +205,35 @@
 </div>
 
 <script>
-/* =================== CONFIG RESOLUTION (robust) =================== */
-let CFG = {};          // final config object
-let SRC = {};          // shorthand to CFG.source
-let ACTIVE_BRANCH = ""; // resolved branch ("main" or "master")
-let AUTO_CTX = null;   // auto-detected repo context (owner/repo/dataDir)
+/* ---------- Minimal config handling: use config.js or auto-detect ---------- */
+let CFG = {};
+let SRC = {};
+let ACTIVE_BRANCH = "main";
 
-async function tryParseConfigJsText(txt){
-  // Accept 3 forms:
-  //   1) window.DAV_CONFIG = { ... };
-  //   2) { ... }  (pure JSON-like)
-  //   3) <script>window.DAV_CONFIG = {...}</script>  (strip tags)
-  txt = txt.trim();
-  txt = txt.replace(/<\/?script[^>]*>/gi, "").trim();
-  let m = txt.match(/window\.DAV_CONFIG\s*=\s*({[\s\S]*?})\s*;?\s*$/);
-  if(m){
-    return Function("return ("+m[1]+")")();
-  }
-  if(txt.startsWith("{")){
-    return JSON.parse(txt);
+function autoDetectFromLocation(){
+  // https://<owner>.github.io/<repo>/<dir...>/
+  const host = location.hostname;
+  const owner = host.endsWith(".github.io") ? host.replace(".github.io","") : "";
+  const parts = location.pathname.replace(/\/index\.html$/,"").replace(/\/$/,"").split("/").filter(Boolean);
+  const repo  = parts[0] || "";
+  const dataDir = parts.slice(1).join("/");
+  if(owner && repo){
+    return {
+      title: document.title || "DAV",
+      source: { type:"github", owner, repo, branch:"main", dataDir },
+      permissions: { write:false },
+      ui: { startMode: "md" }
+    };
   }
   return null;
 }
 
-function autoDetectFromLocation(){
-  // Works for pages like:
-  //   https://<owner>.github.io/<repo>/<dir...>/index.html
-  // We infer owner/repo/dataDir. Branch default 'main' (will try 'master' if needed).
-  const host = location.hostname; // e.g., sakerk.github.io
-  const owner = host.endsWith(".github.io") ? host.replace(".github.io","") : "";
-  const parts = location.pathname.replace(/\/index\.html$/,"").replace(/\/$/,"").split("/").filter(Boolean);
-  const repo  = parts[0] || "";
-  const dataDir = parts.slice(1).join("/"); // folder that holds index.html & data
-  return (owner && repo) ? { owner, repo, dataDir } : null;
-}
-
-async function resolveConfig(){
-  // 1) Already present from <script src="config.js">?
+function resolveConfigSync(){
   if (window.DAV_CONFIG && typeof window.DAV_CONFIG === "object") {
     CFG = window.DAV_CONFIG;
   } else {
-    // 2) Try to fetch config.js and parse it
-    try{
-      const r = await fetch("config.js", {cache:"no-store"});
-      if(r.ok){
-        const txt = await r.text();
-        const parsed = await tryParseConfigJsText(txt);
-        if(parsed) CFG = parsed;
-      }
-    }catch{}
-  }
-  // 3) Try config.json
-  if (!CFG || !CFG.source){
-    try{
-      const rj = await fetch("config.json", {cache:"no-store"});
-      if(rj.ok){
-        CFG = await rj.json();
-      }
-    }catch{}
-  }
-  // 4) Auto-detect from URL if still missing
-  if (!CFG || !CFG.source){
-    AUTO_CTX = autoDetectFromLocation();
-    if (AUTO_CTX){
-      CFG = {
-        title: document.title || "DAV",
-        source: {
-          type: "github",
-          owner: AUTO_CTX.owner,
-          repo: AUTO_CTX.repo,
-          branch: "main",
-          dataDir: AUTO_CTX.dataDir || ""   // "" = repo root
-        },
-        permissions: { write: false },
-        ui: { startMode: "md" }
-      };
-    } else {
-      CFG = { title:"DAV", source:{ type:"github", owner:"", repo:"", branch:"main", dataDir:"" }, permissions:{write:false}, ui:{startMode:"md"} };
-    }
+    const auto = autoDetectFromLocation();
+    CFG = auto || { title:"DAV", source:{type:"github", owner:"", repo:"", branch:"main", dataDir:""}, permissions:{write:false}, ui:{startMode:"md"} };
   }
   SRC = CFG.source || {};
   ACTIVE_BRANCH = SRC.branch || "main";
@@ -290,16 +241,16 @@ async function resolveConfig(){
   const t = document.getElementById("pageTitle"); if(t) t.textContent = CFG.title || "DAV";
 }
 
-/* =================== STATE =================== */
+/* --------------------- State --------------------- */
 let GH_TOKEN  = localStorage.getItem("ghToken") || "";
-let VIEW_MODE = localStorage.getItem("viewMode") || "md";
+let VIEW_MODE = localStorage.getItem("viewMode") || ((CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md");
 let EXPORT_FMT = localStorage.getItem("dav:exportFmt") || "md";
+const CAN_WRITE = ()=> !!(CFG.permissions && CFG.permissions.write && SRC.type==="github");
 
 const VIS_KEY        = (mode)=>`dav:colVisible:${mode}`;
 const WIDTH_KEY      = (mode)=>`dav:colWidths:${mode}`;
 const SIDE_VISIBLE_KEY = "dav:sideVisible";
 const SIDE_COLS_KEY_FN  = (mode)=>`dav:sideCols:${mode}`;
-const CAN_WRITE = ()=> !!(CFG.permissions && CFG.permissions.write && SRC.type==="github");
 
 let HEADERS=[], ROWS=[], FILES=[];
 const SELECTED = new Set();
@@ -311,7 +262,7 @@ let FILTERS = [];
 let HOVER_INDEX = -1;
 let SIDE_COLS = [];
 
-/* =================== GITHUB HELPERS (with branch fallback) =================== */
+/* --------------------- GitHub helpers --------------------- */
 const ghContentsUrl = (dir)=>`https://api.github.com/repos/${encodeURIComponent(SRC.owner)}/${encodeURIComponent(SRC.repo)}/contents/${encodeURIComponent(dir||"")}?ref=${encodeURIComponent(ACTIVE_BRANCH)}`;
 const ghRawUrl = (path)=>`https://raw.githubusercontent.com/${SRC.owner}/${SRC.repo}/${ACTIVE_BRANCH}/${path}`;
 
@@ -320,7 +271,7 @@ async function ghList(dir){
   let res = await fetch(url);
   if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
   if(!res.ok){
-    // Try branch fallback once (main -> master)
+    // Fallback main<->master once
     if ((ACTIVE_BRANCH==="main" || ACTIVE_BRANCH==="master")){
       const alt = ACTIVE_BRANCH==="main" ? "master" : "main";
       const altUrl = url.replace(/ref=[^&]+/, "ref="+encodeURIComponent(alt));
@@ -328,12 +279,10 @@ async function ghList(dir){
       if(!res2.ok && GH_TOKEN){ res2 = await fetch(altUrl, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
       if(res2.ok){ ACTIVE_BRANCH = alt; console.warn("Branch fallback to", ACTIVE_BRANCH); return res2.json(); }
     }
-    const msg = `GitHub list error ${res.status} at ${url}`;
-    throw new Error(msg);
+    throw new Error(`GitHub list error ${res.status} at ${url}`);
   }
   return res.json();
 }
-
 async function ghListAll(dir){
   const entries = await ghList(dir);
   const out = [];
@@ -343,16 +292,15 @@ async function ghListAll(dir){
   }
   return out;
 }
-
 async function fetchText(url){
   let res = await fetch(url);
   if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
   if(!res.ok) throw new Error("Fetch error "+res.status+" for "+url);
   return res.text();
 }
-
 const b64 = (s)=>btoa(unescape(encodeURIComponent(s)));
 
+/* --------------------- Write helpers --------------------- */
 async function createFileInRepo(path, content, message){
   if(!CAN_WRITE()) throw new Error("Write disabled by config.");
   if(!GH_TOKEN){
@@ -366,7 +314,6 @@ async function createFileInRepo(path, content, message){
   if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
   return res.json();
 }
-
 async function updateFileInRepo(path, content, message, sha){
   if(!CAN_WRITE()) throw new Error("Write disabled by config.");
   if(!GH_TOKEN){
@@ -381,7 +328,7 @@ async function updateFileInRepo(path, content, message, sha){
   return res.json();
 }
 
-/* =================== PARSING / CLEANUP =================== */
+/* --------------------- Parsing & cleanup --------------------- */
 function splitCells(line){
   let s=line.trim(); s=s.replace(/^\|/,"").replace(/\|$/,"");
   const parts=[]; let cur="", esc=false;
@@ -411,7 +358,6 @@ function parseFirstTable(md){
   return null;
 }
 const isObj = (v)=>v && typeof v==='object' && !Array.isArray(v);
-
 function cleanBulletLines(text){
   if(text==null) return "";
   let raw = String(text);
@@ -467,7 +413,7 @@ function hideDefaultsIfFresh(){
   COL_VISIBLE = HEADERS.map(()=>true);
 }
 
-/* =================== ATTRIBUTE PANEL =================== */
+/* --------------------- Attribute Panel --------------------- */
 function restoreSideCols(){
   const saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
   if(saved){
@@ -478,7 +424,7 @@ function restoreSideCols(){
 function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch{} }
 function sideColsIndices(){ return SIDE_COLS.map(name => HEADERS.indexOf(name)).filter(i => i>=0); }
 
-/* =================== TABLE RENDERING =================== */
+/* --------------------- Table rendering --------------------- */
 function renderTable(headers, rows){
   const tbl = document.getElementById("sheet");
   tbl.innerHTML="";
@@ -554,7 +500,7 @@ function renderTable(headers, rows){
   }
 }
 
-/* =================== SELECTION / SEARCH / SORT =================== */
+/* --------------------- Selection/Search/Sort --------------------- */
 function setRowSelection(idx, on, multi){
   if(!multi){
     const prev = Array.from(SELECTED);
@@ -652,7 +598,7 @@ function moveFilters(arr, from, to){
   const x = arr.slice(); const v = x.splice(from,1)[0]; x.splice(to,0,v); return x;
 }
 
-/* =================== COLUMN VISIBILITY / WIDTHS =================== */
+/* --------------------- Column visibility & widths --------------------- */
 function applyColumnVisibility(save=false){
   const ths=document.querySelectorAll("#sheet thead th[data-col]");
   const tds=document.querySelectorAll("#sheet tbody td[data-col]");
@@ -721,7 +667,7 @@ function autoFitColumn(i){
   applyColumnWidths();
 }
 
-/* =================== MENUS =================== */
+/* --------------------- Menus --------------------- */
 function buildColumnsPanel(){
   const panel=document.getElementById("colsPanel");
   panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation());
@@ -829,7 +775,7 @@ function updateExportUI(){
   updateActionButtons();
 }
 
-/* =================== EXPORT / COPY =================== */
+/* --------------------- Export / Copy --------------------- */
 function visibleCols(){ const idxs=[]; COL_VISIBLE.forEach((v,i)=>{ if(v!==false) idxs.push(i); }); return idxs; }
 function filterCols(headers,rows){ const cols=visibleCols(); return { fh: cols.map(i=>headers[i]), fr: rows.map(r=>cols.map(i=>r[i])) }; }
 function toMarkdown(headers,rows,title){
@@ -902,11 +848,10 @@ document.getElementById("copyBtn").addEventListener("click", async ()=>{
 });
 function toast(msg){ const el=document.getElementById("count"); const old=el.textContent; el.textContent=msg; setTimeout(()=>{ el.textContent=old; },1200); }
 
-/* =================== ADD/EDIT MODAL =================== */
+/* --------------------- Add/Edit modal --------------------- */
 const addModal = ()=>document.getElementById("addModal");
 const addGrid  = ()=>document.getElementById("addGrid");
 const addMsg   = ()=>document.getElementById("addMsg");
-
 function openForm(isEdit=false){
   if(!HEADERS.length){ alert("Data not loaded yet."); return; }
   if(!CAN_WRITE()){ alert("Editing disabled by configuration."); return; }
@@ -922,11 +867,9 @@ function openForm(isEdit=false){
 }
 function closeForm(){ addModal().classList.remove("open"); addModal().setAttribute("aria-hidden","true"); EDIT_INDEX=-1; }
 function setStatus(t,ok){ const el=addMsg(); el.textContent=t||""; el.classList.toggle("ok", ok===true); el.classList.toggle("err", ok===false); }
-
 document.getElementById("addBtn").addEventListener("click",()=>openForm(false));
 document.getElementById("editBtn").addEventListener("click",()=>{ if(SELECTED.size!==1){ alert("Select exactly one row to edit."); return; } openForm(true); });
 document.getElementById("addClose").addEventListener("click",closeForm);
-
 document.getElementById("addSave").addEventListener("click", async (e)=>{
   e.preventDefault();
   if(!CAN_WRITE()){ alert("Editing disabled by configuration."); return; }
@@ -972,7 +915,7 @@ document.getElementById("addSave").addEventListener("click", async (e)=>{
   }
 });
 
-/* =================== LOADERS (recursive) =================== */
+/* --------------------- Loaders (recursive) --------------------- */
 async function loadMd(){
   const countEl=document.getElementById("count");
   ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
@@ -1015,7 +958,6 @@ async function loadMd(){
   }
   renderTable(HEADERS, ROWS);
 }
-
 async function loadJson(){
   const countEl=document.getElementById("count");
   ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
@@ -1051,7 +993,7 @@ async function loadJson(){
   renderTable(HEADERS, ROWS);
 }
 
-/* =================== MODE / BOOT =================== */
+/* --------------------- Mode & boot --------------------- */
 function applyModeUI(){
   const mdBtn=document.getElementById("modeMd");
   const jsBtn=document.getElementById("modeJson");
@@ -1064,12 +1006,8 @@ document.getElementById("modeJson").addEventListener("click",()=>{ VIEW_MODE="js
 async function reloadAll(){
   applyModeUI();
   const tbl=document.getElementById("sheet"); tbl.innerHTML="<thead><tr><th>Loading…</th></tr></thead>";
-  // Quick diag: show what we're about to query
-  const count=document.getElementById("count");
-  const diag = (SRC.type==="github")
-    ? `owner=${SRC.owner} repo=${SRC.repo} dir=${SRC.dataDir||"(root)"} branch=${ACTIVE_BRANCH}`
-    : `list (${(SRC.urls||[]).length} urls)`;
-  count.textContent = `Loading (${diag})…`;
+  const diag = (SRC.type==="github") ? `owner=${SRC.owner} repo=${SRC.repo} dir=${SRC.dataDir||"(root)"} branch=${ACTIVE_BRANCH}` : `list (${(SRC.urls||[]).length} urls)`;
+  document.getElementById("count").textContent = `Loading (${diag})…`;
   try{
     if(VIEW_MODE==="json") await loadJson(); else await loadMd();
   }catch(err){
@@ -1078,21 +1016,12 @@ async function reloadAll(){
   }
 }
 
-/* =================== INIT =================== */
-(async function init(){
-  await resolveConfig();
-  // If you KNOW everything is in the same folder as index.html/config.js,
-  // you can set dataDir explicitly to that folder name (relative to repo root).
-  // Auto-detect already did this if possible.
-  if (!SRC || !SRC.type){
-    const t=document.getElementById("sheet");
-    t.innerHTML = "<thead><tr><th>Missing configuration and auto-detect failed.</th></tr></thead>";
-    return;
-  }
-  // Start mode from config if provided
+/* --------------------- Init --------------------- */
+(function init(){
+  resolveConfigSync();
+  // If config.js defines ui.startMode, prefer it on first run
   const start = (CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md";
-  VIEW_MODE = localStorage.getItem("viewMode") || start;
-
+  if(!localStorage.getItem("viewMode")) VIEW_MODE = start;
   reloadAll();
 })();
 </script>
