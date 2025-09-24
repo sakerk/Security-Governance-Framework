@@ -1,1168 +1,1100 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Data Agnostic Viewer (DAV)</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Data Agnostic Viewer (DAV)</title>
 
-  <!-- Load your config BEFORE the main script.
-       Create a file named config.js next to this index.html, e.g.:
+<!-- Optional config (either one). If absent, DAV will auto-detect from the page URL. -->
+<script src="config.js" defer></script>
+<link rel="preload" href="config.json" as="fetch" crossorigin="anonymous"/>
 
-       window.DAV_CONFIG = {
-         title: "MPA 5.3.1",
-         source: {
-           type: "github",                 // "github" | "list"
-           owner: "YOUR_GH_USERNAME_OR_ORG",
-           repo: "YOUR_REPO_NAME",
-           branch: "main",
-           // If index.html & data files are in the SAME folder in the repo,
-           // set dataDir to that folder path RELATIVE to the repo root:
-           // e.g. "MPA_5.3.1_Controls"
-           dataDir: "MPA_5.3.1_Controls"
-         },
-         permissions: { write: true },     // enable add/edit via GitHub API
-         ui: { startMode: "md" }           // "md" or "json"
-       };
-  -->
-  <script src="config.js"></script>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#0f172a; --muted:#93a1b1; --text:#e6edf3; --line:#1f2937;
+    --accent:#60a5fa; --sel:#19324d; --hover:#0f2236; --danger:#ef4444; --ok:#22c55e;
+    --side-width: 380px;
+  }
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+  *{scrollbar-width:thin; scrollbar-color:#344256 #0b1220;}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:#0b1220}
+  ::-webkit-scrollbar-thumb{background:#344256;border-radius:10px;border:2px solid #0b1220}
+  ::-webkit-scrollbar-thumb:hover{background:#4a5e7a}
 
-  <style>
-    :root{
-      --bg:#0b0f14; --panel:#0f172a; --muted:#93a1b1; --text:#e6edf3; --line:#1f2937;
-      --accent:#60a5fa; --sel:#19324d; --hover:#0f2236; --danger:#ef4444; --ok:#22c55e;
-      --side-width: 380px;
-    }
-    html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+  .app{height:100vh;display:flex;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+  .title{margin:0;font-size:16px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+  .spacer{flex:1}
+  .search{min-width:220px;max-width:420px;width:36ch;padding:10px 12px;border-radius:12px;outline:none;border:1px solid #263241;background:#0b1220;color:var(--text)}
+  .count{font-size:12px;color:var(--muted);white-space:nowrap}
+  .wrap {flex:1 1 auto;min-height:0}
+  .mainbar{display:flex;height:100%}
+  .mainbar.side-hidden .side, .mainbar.side-hidden #gutter{display:none}
+  .main{flex:1;min-width:0;padding:10px;display:flex;flex-direction:column}
+  .tableScroll{flex:1;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px}
+  table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  td{white-space:pre-wrap;overflow-wrap:anywhere}
+  thead th{position:sticky;top:0;background:#0f172a;z-index:2;user-select:none}
+  thead .filters th{position:sticky;top:36px;background:#0e1525;z-index:2;padding:6px 8px;border-bottom:1px solid #172233}
+  thead .filters input{width:100%;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1px solid #263241;background:#0b1220;color:#e6edf3;font-size:12px}
+  tbody tr.hide{display:none}
+  tbody tr.selected td{background:var(--sel)}
+  tbody tr:hover td{background:var(--hover)}
+  tbody tr.selected:hover td{background:var(--sel)}
+  th.selCol,td.selCol{width:44px;min-width:44px;max-width:44px;text-align:center}
+  input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
 
-    /* Global thin scrollbars */
-    *{scrollbar-width:thin; scrollbar-color:#344256 #0b1220;}
-    ::-webkit-scrollbar{width:8px; height:8px}
-    ::-webkit-scrollbar-track{background:#0b1220}
-    ::-webkit-scrollbar-thumb{background:#344256; border-radius:10px; border:2px solid #0b1220}
-    ::-webkit-scrollbar-thumb:hover{background:#4a5e7a}
+  /* Column resizer */
+  th{position:sticky;top:0;background:#0f172a}
+  th .headerInner{position:relative;display:flex;gap:6px;align-items:center;padding-right:10px;cursor:pointer}
+  .sortIndicator{font-size:12px;color:#9aa6b2}
+  .resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;user-select:none;
+    background:linear-gradient(to right, transparent 0, transparent 3px, #1f2937 3px, #1f2937 5px, transparent 5px);
+    opacity:.3}
+  .resizer:hover{opacity:.6}
 
-    .app{height:100vh;display:flex;flex-direction:column}
-    .topbar{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
-    .title{margin:0;font-size:16px;font-weight:600;letter-spacing:.2px;white-space:nowrap}
-    .spacer{flex:1}
-    .search{min-width:220px;max-width:420px;width:36ch;padding:10px 12px;border-radius:12px;outline:none;border:1px solid #263241;background:#0b1220;color:var(--text)}
-    .count{font-size:12px;color:var(--muted);white-space:nowrap}
-    .wrap {flex:1 1 auto;min-height:0}
-    .mainbar{display:flex;height:100%}
-    .mainbar.side-hidden .side, .mainbar.side-hidden #gutter{display:none}
-    .main{flex:1;min-width:0;padding:10px;display:flex;flex-direction:column}
-    .tableScroll{flex:1;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px}
-    table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-    th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-    td{white-space:pre-wrap; overflow-wrap:anywhere}
-    thead th{position:sticky;top:0;background:#0f172a;z-index:2;user-select:none}
-    thead .filters th{position:sticky;top:36px;background:#0e1525;z-index:2;padding:6px 8px;border-bottom:1px solid #172233}
-    thead .filters input{width:100%;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1px solid #263241;background:#0b1220;color:#e6edf3;font-size:12px}
-    tbody tr.hide{display:none}
-    tbody tr.selected td{background:var(--sel)}
-    tbody tr:hover td{background:var(--hover)}
-    tbody tr.selected:hover td{background:var(--sel)}
-    th.selCol,td.selCol{width:44px;min-width:44px;max-width:44px;text-align:center}
-    input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
+  .hidden-col{width:0!important;min-width:0!important;max-width:0!important;padding:0!important;border:0!important;overflow:hidden!important;clip-path:inset(0);white-space:nowrap!important;pointer-events:none;opacity:0}
+  thead tr.filters th.hidden-col{height:0;padding:0!important;border:0!important}
 
-    /* Column resizer */
-    th{position:sticky;top:0;background:#0f172a}
-    th .headerInner{position:relative;display:flex;gap:6px;align-items:center;padding-right:10px;cursor:pointer}
-    .sortIndicator{font-size:12px;color:#9aa6b2}
-    .resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;user-select:none;
-      background:linear-gradient(to right, transparent 0, transparent 3px, #1f2937 3px, #1f2937 5px, transparent 5px);
-      opacity:.3}
-    .resizer:hover{opacity:.6}
+  .controls{display:flex;gap:6px;align-items:center}
+  .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid #27415f;background:#0f213c;color:#dbeafe;border-radius:10px;cursor:pointer}
+  .iconbtn[disabled]{opacity:.5;cursor:not-allowed}
+  .iconbtn:hover{background:#15325d}
+  .icon{width:16px;height:16px;fill:currentColor}
 
-    /* Hide columns WITHOUT breaking layout */
-    .hidden-col{width:0 !important;min-width:0 !important;max-width:0 !important;
-      padding:0 !important;border:0 !important;overflow:hidden !important;
-      clip-path:inset(0);white-space:nowrap !important;pointer-events:none;opacity:0}
-    thead tr.filters th.hidden-col{height:0;padding:0 !important;border:0 !important}
+  .columnsWrap,.sideFieldsWrap,.exportWrap{display:flex;gap:8px;align-items:center;position:relative}
+  .colsPanel{display:none;position:absolute;top:42px;right:0;z-index:1000;min-width:280px;max-height:60vh;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .colsPanel.open{display:block}
+  .panelRow{display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:8px}
+  .panelRow:hover{background:#0f213c}
+  .panelRow .label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .colsPanel .note{margin-top:8px;color:var(--muted);font-size:12px}
 
-    /* Controls – icons-only */
-    .controls{display:flex;gap:6px;align-items:center}
-    .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid #27415f;background:#0f213c;color:#dbeafe;border-radius:10px;cursor:pointer}
-    .iconbtn[disabled]{opacity:.5;cursor:not-allowed}
-    .iconbtn:hover{background:#15325d}
-    .icon{width:16px;height:16px;fill:currentColor}
+  .togglebtn{position:relative;width:44px;height:24px;border-radius:999px;border:1px solid #27415f;background:#15233e;cursor:pointer}
+  .togglebtn::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#dbeafe;border-radius:50%;transition:left .15s ease}
+  .togglebtn[aria-pressed="true"]{background:#2c5fa8}
+  .togglebtn[aria-pressed="true"]::after{left:22px}
 
-    /* Dropdown panels (no checkboxes; toggle/radio) */
-    .columnsWrap,.modeWrap,.sideFieldsWrap,.exportWrap{display:flex;gap:8px;align-items:center;position:relative}
-    .colsPanel{display:none;position:absolute;top:42px;right:0;z-index:1000;min-width:280px;max-height:60vh;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-    .colsPanel.open{display:block}
-    .panelRow{display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:8px}
-    .panelRow:hover{background:#0f213c}
-    .panelRow .label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .colsPanel .note{margin-top:8px;color:var(--muted);font-size:12px}
+  .radiobtn{position:relative;width:20px;height:20px;border-radius:50%;border:1px solid #27415f;background:#15233e;cursor:pointer}
+  .radiobtn[aria-checked="true"]::after{content:"";position:absolute;top:4px;left:4px;width:10px;height:10px;border-radius:50%;background:#dbeafe}
+  .exportFooter{display:flex;gap:8px;justify-content:flex-end;padding-top:8px;border-top:1px solid #1a2436;margin-top:8px}
 
-    /* Toggle pill (columns menus) */
-    .togglebtn{
-      position:relative; width:44px; height:24px; border-radius:999px;
-      border:1px solid #27415f; background:#15233e; cursor:pointer;
-    }
-    .togglebtn::after{
-      content:""; position:absolute; top:2px; left:2px; width:20px; height:20px;
-      background:#dbeafe; border-radius:50%; transition:left .15s ease;
-    }
-    .togglebtn[aria-pressed="true"]{ background:#2c5fa8; }
-    .togglebtn[aria-pressed="true"]::after{ left:22px; }
+  .gutter{width:6px;cursor:col-resize;background:linear-gradient(to right, transparent 0, transparent 2px, #1f2937 2px, #1f2937 4px, transparent 4px)}
+  .side{width:var(--side-width);min-width:260px;max-width:70vw;border-left:1px solid var(--line);background:#0b1220;padding:10px;overflow:auto}
+  .side h2{margin:0 0 8px 0;font-size:14px}
+  .side .section{margin-bottom:14px}
+  .attrlist{list-style:decimal;margin:6px 0 0 20px;padding:0}
+  .attrlist li{padding:4px 2px}
 
-    /* Radio (for Export format) */
-    .radiobtn{
-      position:relative; width:20px; height:20px; border-radius:50%;
-      border:1px solid #27415f; background:#15233e; cursor:pointer;
-    }
-    .radiobtn[aria-checked="true"]::after{
-      content:""; position:absolute; top:4px; left:4px; width:10px; height:10px; border-radius:50%; background:#dbeafe;
-    }
-    .exportFooter{display:flex;gap:8px;justify-content:flex-end;padding-top:8px;border-top:1px solid #1a2436;margin-top:8px}
+  .seg{display:inline-flex;border:1px solid #27415f;border-radius:12px;overflow:hidden}
+  .seg button{border:0;background:#0f213c;color:#dbeafe;padding:8px 12px;cursor:pointer}
+  .seg button.active{background:#13305a}
 
-    /* Right attribute pane + gutter */
-    .gutter{width:6px;cursor:col-resize;background:linear-gradient(to right, transparent 0, transparent 2px, #1f2937 2px, #1f2937 4px, transparent 4px)}
-    .side{width:var(--side-width);min-width:260px;max-width:70vw;border-left:1px solid var(--line);background:#0b1220;padding:10px;overflow:auto}
-    .side h2{margin:0 0 8px 0;font-size:14px}
-    .side .section{margin-bottom:14px}
-    .attrlist{ list-style:decimal; margin:6px 0 0 20px; padding:0; }
-    .attrlist li{ padding:4px 2px; }
+  @media (max-width:900px){
+    .title{display:none}
+    .search{flex:1;min-width:0;width:auto}
+    .side{display:none}.gutter{display:none}
+  }
 
-    /* Segmented view mode */
-    .seg{display:inline-flex;border:1px solid #27415f;border-radius:12px;overflow:hidden}
-    .seg button{border:0;background:#0f213c;color:#dbeafe;padding:8px 12px;cursor:pointer}
-    .seg button.active{background:#13305a}
-
-    @media (max-width:900px){
-      .title{display:none}
-      .search{flex:1;min-width:0;width:auto}
-      .side{display:none} .gutter{display:none}
-    }
-
-    /* Modal */
-    .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
-    .modalBackdrop.open{display:flex}
-    .modal{width:min(900px,92vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-    .modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
-    .modal h2{margin:0;font-size:16px}
-    .modal .content{padding:14px 16px}
-    .modal .grid{display:grid;grid-template-columns:200px 1fr;gap:10px 14px;align-items:start}
-    .modal label{color:var(--muted);font-size:13px;padding-top:10px}
-    .modal input,.modal textarea,.modal select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263241;background:#0b1220;color:#e6edf3}
-    .modal footer{display:flex;gap:10px;justify-content:flex-end;padding:14px 16px;border-top:1px solid var(--line)}
-    .help{color:var(--muted);font-size:12px;margin-top:8px}
-    .msg{font-size:13px;margin-right:auto}
-    .msg.ok{color:var(--ok)} .msg.err{color:var(--danger)}
-    @media (max-width:900px){ .modal .grid{grid-template-columns:1fr} .modal label{padding-top:0} }
-  </style>
+  .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
+  .modalBackdrop.open{display:flex}
+  .modal{width:min(900px,92vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .modal h2{margin:0;font-size:16px}
+  .modal .content{padding:14px 16px}
+  .modal .grid{display:grid;grid-template-columns:200px 1fr;gap:10px 14px;align-items:start}
+  .modal label{color:var(--muted);font-size:13px;padding-top:10px}
+  .modal input,.modal textarea,.modal select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263241;background:#0b1220;color:#e6edf3}
+  .modal footer{display:flex;gap:10px;justify-content:flex-end;padding:14px 16px;border-top:1px solid var(--line)}
+  .help{color:var(--muted);font-size:12px;margin-top:8px}
+  .msg{font-size:13px;margin-right:auto}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--danger)}
+  @media (max-width:900px){ .modal .grid{grid-template-columns:1fr} .modal label{padding-top:0} }
+</style>
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <h1 id="pageTitle" class="title">Data Agnostic Viewer (DAV)</h1>
+<div class="app">
+  <header class="topbar">
+    <h1 id="pageTitle" class="title">Data Agnostic Viewer (DAV)</h1>
 
-      <div class="seg" role="tablist" aria-label="View mode">
-        <button id="modeMd" role="tab" aria-selected="true">MD</button>
-        <button id="modeJson" role="tab" aria-selected="false">JSON</button>
-      </div>
+    <div class="seg" role="tablist" aria-label="View mode">
+      <button id="modeMd" role="tab" aria-selected="true">MD</button>
+      <button id="modeJson" role="tab" aria-selected="false">JSON</button>
+    </div>
 
-      <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search table" />
+    <input id="q" class="search" type="search" placeholder="Search…" aria-label="Search table"/>
 
-      <!-- Columns dropdown -->
-      <div class="columnsWrap">
-        <button id="colsBtn" class="iconbtn" title="Columns" aria-haspopup="true" aria-expanded="false">
-          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.75A.75.75 0 0 1 2.25 3h11.5a.75.75 0 0 1 .54 1.28L9.5 9.06v3.69a.75.75 0 0 1-1.14.64l-2-1.25a.75.75 0 0 1-.36-.64V9.06L1.71 4.28A.75.75 0 0 1 1.5 3.75Z"/></svg>
+    <div class="columnsWrap">
+      <button id="colsBtn" class="iconbtn" title="Columns" aria-haspopup="true" aria-expanded="false">
+        <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.75A.75.75 0 0 1 2.25 3h11.5a.75.75 0 0 1 .54 1.28L9.5 9.06v3.69a.75.75 0 0 1-1.14.64l-2-1.25a.75.75 0 0 1-.36-.64V9.06L1.71 4.28A.75.75 0 0 1 1.5 3.75Z"/></svg>
+      </button>
+      <div id="colsPanel" class="colsPanel" role="dialog" aria-label="Toggle table columns"></div>
+    </div>
+
+    <div class="controls">
+      <div class="sideFieldsWrap">
+        <button id="sideColsBtn" class="iconbtn" title="Choose fields for Attribute Panel" aria-haspopup="true" aria-expanded="false">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3a.75.75 0 0 1 0-1.5h6.5a.75.75 0 0 1 0 1.5h-6.5ZM2 4.75c0-.414.336-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 2 4.75Zm0 7.5c0-.414.336-.75.75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 2 12.25Zm11.25-4.5a.75.75 0 0 0 0-1.5H7.75a.75.75 0 0 0 0 1.5h5.5Z"/></svg>
         </button>
-        <div id="colsPanel" class="colsPanel" role="dialog" aria-label="Toggle table columns"></div>
+        <div id="sideColsPanel" class="colsPanel" role="dialog" aria-label="Choose fields for Attribute Panel"></div>
       </div>
 
-      <div class="controls">
-        <!-- Attribute Panel fields -->
-        <div class="sideFieldsWrap">
-          <button id="sideColsBtn" class="iconbtn" title="Choose fields for Attribute Panel" aria-haspopup="true" aria-expanded="false">
-            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3a.75.75 0 0 1 0-1.5h6.5a.75.75 0 0 1 0 1.5h-6.5ZM2 4.75c0-.414.336-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 2 4.75Zm0 7.5c0-.414.336-.75.75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 2 12.25Zm11.25-4.5a.75.75 0 0 0 0-1.5H7.75a.75.75 0 0 0 0 1.5h5.5Z"/></svg>
-          </button>
-          <div id="sideColsPanel" class="colsPanel" role="dialog" aria-label="Choose fields for Attribute Panel"></div>
+      <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
+        <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
+      </button>
+      <button id="editBtn" class="iconbtn" title="Edit selected row" aria-label="Edit selected row" disabled>
+        <svg class="icon" viewBox="0 0 16 16"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
+      </button>
+      <button id="copyBtn" class="iconbtn" title="Copy (uses chosen export format)" aria-label="Copy (uses chosen export format)" disabled>
+        <svg class="icon" viewBox="0 0 16 16"><path d="M3.75 2A1.75 1.75 0 0 0 2 3.75v7.5C2 12.216 2.784 13 3.75 13h5.5A1.75 1.75 0 0 0 11 11.25v-7.5C11 2.784 10.216 2 9.25 2h-5.5Zm0 1.5h5.5a.25.25 0 0 1 .25.25v7.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25v-7.5a.25.25 0 0 1 .25-.25ZM13 4.75a.75.75 0 0 1 1.5 0v7.5A2.75 2.75 0 0 1 11.75 15h-7.5a.75.75 0 0 1 0-1.5h7.5c.69 0 1.25-.56 1.25-1.25v-7.5Z"/></svg>
+      </button>
+
+      <div class="exportWrap">
+        <button id="exportBtn" class="iconbtn" title="Export">
+          <svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>
+        </button>
+        <div id="exportPanel" class="colsPanel" role="dialog" aria-label="Choose export format and export"></div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <span id="count" class="count" aria-live="polite"></span>
+
+    <button id="toggleSideBtn" class="iconbtn" title="Show/Hide Attribute Panel" aria-label="Show/Hide Attribute Panel" aria-pressed="true" style="margin-left:6px;">
+      <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25v-8.5C15 2.784 14.216 2 13.25 2H2.75Zm7.75 1.5h2.75a.25.25 0 0 1 .25.25v8.5a.25.25 0 0 1-.25.25H10.5V3.5Zm-1.5 0H2.75a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25H9V3.5Z"/></svg>
+    </button>
+  </header>
+
+  <div class="wrap">
+    <div class="mainbar">
+      <div class="main">
+        <div class="tableScroll">
+          <table id="sheet"><colgroup id="colgroup"><col class="col-sel"></colgroup></table>
         </div>
-
-        <!-- Add -->
-        <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
-          <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
-        </button>
-        <!-- Edit -->
-        <button id="editBtn" class="iconbtn" title="Edit selected row" aria-label="Edit selected row" disabled>
-          <svg class="icon" viewBox="0 0 16 16"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
-        </button>
-        <!-- Copy -->
-        <button id="copyBtn" class="iconbtn" title="Copy (uses chosen export format)" aria-label="Copy (uses chosen export format)" disabled>
-          <svg class="icon" viewBox="0 0 16 16"><path d="M3.75 2A1.75 1.75 0 0 0 2 3.75v7.5C2 12.216 2.784 13 3.75 13h5.5A1.75 1.75 0 0 0 11 11.25v-7.5C11 2.784 10.216 2 9.25 2h-5.5Zm0 1.5h5.5a.25.25 0 0 1 .25.25v7.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25v-7.5a.25.25 0 0 1 .25-.25ZM13 4.75a.75.75 0 0 1 1.5 0v7.5A2.75 2.75 0 0 1 11.75 15h-7.5a.75.75 0 0 1 0-1.5h7.5c.69 0 1.25-.56 1.25-1.25v-7.5Z"/></svg>
-        </button>
-
-        <!-- Export dropdown -->
-        <div class="exportWrap">
-          <button id="exportBtn" class="iconbtn" title="Export">
-            <svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>
-          </button>
-          <div id="exportPanel" class="colsPanel" role="dialog" aria-label="Choose export format and export"></div>
-        </div>
       </div>
+      <div id="gutter" class="gutter" title="Drag to resize Attribute Panel" aria-hidden="true"></div>
+      <aside class="side" aria-label="Attribute Panel">
+        <h2>Attribute Panel</h2>
+        <div id="attrContainer"></div>
+      </aside>
+    </div>
+  </div>
+</div>
 
-      <div class="spacer"></div>
-
-      <!-- Count -->
-      <span id="count" class="count" aria-live="polite"></span>
-
-      <!-- Attribute Panel toggle (far right) -->
-      <button id="toggleSideBtn" class="iconbtn" title="Show/Hide Attribute Panel" aria-label="Show/Hide Attribute Panel" aria-pressed="true" style="margin-left:6px;">
-        <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25v-8.5C15 2.784 14.216 2 13.25 2H2.75Zm7.75 1.5h2.75a.25.25 0 0 1 .25.25v8.5a.25.25 0 0 1-.25.25H10.5V3.5Zm-1.5 0H2.75a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25H9V3.5Z"/></svg>
+<div id="addModal" class="modalBackdrop" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal" role="document">
+    <header>
+      <h2 id="formTitle">Add Row</h2>
+      <button id="addClose" class="iconbtn" aria-label="Close">
+        <svg class="icon" viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 0 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 0 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 1 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z"/></svg>
       </button>
     </header>
-
-    <div class="wrap">
-      <div class="mainbar">
-        <div class="main">
-          <div class="tableScroll">
-            <table id="sheet"><colgroup id="colgroup"><col class="col-sel"></colgroup></table>
-          </div>
-        </div>
-        <div id="gutter" class="gutter" title="Drag to resize Attribute Panel" aria-hidden="true"></div>
-        <aside class="side" aria-label="Attribute Panel">
-          <h2>Attribute Panel</h2>
-          <div id="attrContainer"></div>
-        </aside>
-      </div>
+    <div class="content">
+      <form id="addForm"><div id="addGrid" class="grid"></div><p class="help">All fields are optional.</p></form>
     </div>
+    <footer>
+      <div id="addMsg" class="msg" aria-live="polite"></div>
+      <button id="addSave" class="iconbtn" title="Save">
+        <svg class="icon" viewBox="0 0 16 16"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25V5.06c0-.464-.184-.909-.513-1.237L12.176 1.51A1.75 1.75 0 0 0 10.94 1H2.75ZM10 2.5h.94c.2 0 .39.079.53.22l2.06 2.06V12.25a.25.25 0 0 1-.25.25H2.75a.25.25 0 0 1-.25-.25v-8.5a.25.25 0 0 1 .25-.25H10V6a1 1 0 1 0 2 0V2.5Z"/></svg>
+      </button>
+    </footer>
   </div>
+</div>
 
-  <!-- Add/Edit Row Modal -->
-  <div id="addModal" class="modalBackdrop" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="modal" role="document">
-      <header>
-        <h2 id="formTitle">Add Row</h2>
-        <button id="addClose" class="iconbtn" aria-label="Close">
-          <svg class="icon" viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 0 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 0 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 1 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z"/></svg>
-        </button>
-      </header>
-      <div class="content">
-        <form id="addForm"><div id="addGrid" class="grid"></div><p class="help">All fields are optional.</p></form>
-      </div>
-      <footer>
-        <div id="addMsg" class="msg" aria-live="polite"></div>
-        <button id="addSave" class="iconbtn" title="Save">
-          <svg class="icon" viewBox="0 0 16 16"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25V5.06c0-.464-.184-.909-.513-1.237L12.176 1.51A1.75 1.75 0 0 0 10.94 1H2.75ZM10 2.5h.94c.2 0 .39.079.53.22l2.06 2.06V12.25a.25.25 0 0 1-.25.25H2.75a.25.25 0 0 1-.25-.25v-8.5a.25.25 0 0 1 .25-.25H10V6a1 1 0 1 0 2 0V2.5Z"/></svg>
-        </button>
-      </footer>
-    </div>
-  </div>
+<script>
+/* =================== CONFIG RESOLUTION (robust) =================== */
+let CFG = {};          // final config object
+let SRC = {};          // shorthand to CFG.source
+let ACTIVE_BRANCH = ""; // resolved branch ("main" or "master")
+let AUTO_CTX = null;   // auto-detected repo context (owner/repo/dataDir)
 
-  <script>
-    // ====== DAV bootstrap (config & guards) ======
-    const CFG = (window.DAV_CONFIG || {});
-    const SRC = (CFG.source || {});
-    const CAN_WRITE = !!(CFG.permissions && CFG.permissions.write && SRC.type === "github");
-    const START_MODE = (CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md";
+async function tryParseConfigJsText(txt){
+  // Accept 3 forms:
+  //   1) window.DAV_CONFIG = { ... };
+  //   2) { ... }  (pure JSON-like)
+  //   3) <script>window.DAV_CONFIG = {...}</script>  (strip tags)
+  txt = txt.trim();
+  txt = txt.replace(/<\/?script[^>]*>/gi, "").trim();
+  let m = txt.match(/window\.DAV_CONFIG\s*=\s*({[\s\S]*?})\s*;?\s*$/);
+  if(m){
+    return Function("return ("+m[1]+")")();
+  }
+  if(txt.startsWith("{")){
+    return JSON.parse(txt);
+  }
+  return null;
+}
 
-    document.title = CFG.title || "Data Agnostic Viewer (DAV)";
-    const titleEl = document.getElementById("pageTitle");
-    if (titleEl) titleEl.textContent = CFG.title || "Data Agnostic Viewer (DAV)";
+function autoDetectFromLocation(){
+  // Works for pages like:
+  //   https://<owner>.github.io/<repo>/<dir...>/index.html
+  // We infer owner/repo/dataDir. Branch default 'main' (will try 'master' if needed).
+  const host = location.hostname; // e.g., sakerk.github.io
+  const owner = host.endsWith(".github.io") ? host.replace(".github.io","") : "";
+  const parts = location.pathname.replace(/\/index\.html$/,"").replace(/\/$/,"").split("/").filter(Boolean);
+  const repo  = parts[0] || "";
+  const dataDir = parts.slice(1).join("/"); // folder that holds index.html & data
+  return (owner && repo) ? { owner, repo, dataDir } : null;
+}
 
-    // Validate config presence
-    const hasGithubCfg = SRC.type === "github" && SRC.owner && SRC.repo && SRC.branch && SRC.dataDir!=null;
-    const hasListCfg   = SRC.type === "list" && Array.isArray(SRC.urls) && SRC.urls.length > 0;
-    if (!hasGithubCfg && !hasListCfg) {
-      const t = document.getElementById("sheet");
-      t.innerHTML = "<thead><tr><th>Missing config.js</th></tr></thead><tbody><tr><td>Provide window.DAV_CONFIG with either source.type='github' (owner, repo, branch, dataDir) or source.type='list' (urls:[])</td></tr></tbody>";
-    }
-
-    // ====== State ======
-    let GH_TOKEN  = localStorage.getItem("ghToken") || "";
-    let VIEW_MODE = localStorage.getItem("viewMode") || START_MODE; // "md" | "json"
-    const VIS_KEY        = (mode)=>`dav:colVisible:${mode}`;
-    const WIDTH_KEY      = (mode)=>`dav:colWidths:${mode}`;
-    const SIDE_VISIBLE_KEY = "dav:sideVisible";
-    const SIDE_COLS_KEY_FN  = (mode)=>`dav:sideCols:${mode}`;
-    let EXPORT_FMT = localStorage.getItem("dav:exportFmt") || "md"; // "md"|"csv"|"json"|"pdf"
-
-    let HEADERS=[], ROWS=[], FILES=[];
-    const SELECTED = new Set(); // single-select by default; Shift for multi
-    let COL_VISIBLE=[], COL_WIDTHS=[];
-    let INDEX_ROWS=[];
-    let SORT_COL=-1, SORT_DIR=1;
-    let EDIT_INDEX = -1;
-    let FILTERS = []; // per-column
-    let HOVER_INDEX = -1;
-    let SIDE_COLS = []; // header names for Attribute Panel
-
-    // ====== Source helpers ======
-    const ghContentsUrl = (dir)=>`https://api.github.com/repos/${encodeURIComponent(SRC.owner)}/${encodeURIComponent(SRC.repo)}/contents/${encodeURIComponent(dir)}?ref=${encodeURIComponent(SRC.branch)}`;
-    const ghRawUrl = (path)=>`https://raw.githubusercontent.com/${SRC.owner}/${SRC.repo}/${SRC.branch}/${path}`;
-
-    async function ghList(dir){
-      const url = ghContentsUrl(dir || "");
-      let res = await fetch(url);
-      if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
-      if(!res.ok) throw new Error("GitHub list error "+res.status);
-      return res.json();
-    }
-
-    // Recursive folder scan (subdirectory scanning)
-    async function ghListAll(dir){
-      const base = (dir==null || dir==="") ? "" : String(dir);
-      const entries = await ghList(base);
-      const out = [];
-      for (const it of entries) {
-        if (it.type === "file") out.push(it);
-        else if (it.type === "dir") {
-          const subPath = it.path; // GitHub returns full relative path
-          out.push(...await ghListAll(subPath));
-        }
+async function resolveConfig(){
+  // 1) Already present from <script src="config.js">?
+  if (window.DAV_CONFIG && typeof window.DAV_CONFIG === "object") {
+    CFG = window.DAV_CONFIG;
+  } else {
+    // 2) Try to fetch config.js and parse it
+    try{
+      const r = await fetch("config.js", {cache:"no-store"});
+      if(r.ok){
+        const txt = await r.text();
+        const parsed = await tryParseConfigJsText(txt);
+        if(parsed) CFG = parsed;
       }
-      return out;
-    }
-
-    async function fetchText(url){
-      let res = await fetch(url);
-      if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
-      if(!res.ok) throw new Error("Fetch error "+res.status+" for "+url);
-      return res.text();
-    }
-    const b64 = (s)=>btoa(unescape(encodeURIComponent(s)));
-
-    async function createFileInRepo(path, content, message){
-      if(!CAN_WRITE) throw new Error("Write disabled by config.");
-      if(!GH_TOKEN){
-        const tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
-        if(!tok) throw new Error("Write cancelled (no token)");
-        GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
+    }catch{}
+  }
+  // 3) Try config.json
+  if (!CFG || !CFG.source){
+    try{
+      const rj = await fetch("config.json", {cache:"no-store"});
+      if(rj.ok){
+        CFG = await rj.json();
       }
-      const url = `https://api.github.com/repos/${SRC.owner}/${SRC.repo}/contents/${encodeURIComponent(path)}`;
-      const body = { message: message||("Add "+path), content: b64(content), branch: SRC.branch };
-      const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
-      if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
-      return res.json();
+    }catch{}
+  }
+  // 4) Auto-detect from URL if still missing
+  if (!CFG || !CFG.source){
+    AUTO_CTX = autoDetectFromLocation();
+    if (AUTO_CTX){
+      CFG = {
+        title: document.title || "DAV",
+        source: {
+          type: "github",
+          owner: AUTO_CTX.owner,
+          repo: AUTO_CTX.repo,
+          branch: "main",
+          dataDir: AUTO_CTX.dataDir || ""   // "" = repo root
+        },
+        permissions: { write: false },
+        ui: { startMode: "md" }
+      };
+    } else {
+      CFG = { title:"DAV", source:{ type:"github", owner:"", repo:"", branch:"main", dataDir:"" }, permissions:{write:false}, ui:{startMode:"md"} };
     }
+  }
+  SRC = CFG.source || {};
+  ACTIVE_BRANCH = SRC.branch || "main";
+  document.title = CFG.title || "DAV";
+  const t = document.getElementById("pageTitle"); if(t) t.textContent = CFG.title || "DAV";
+}
 
-    async function updateFileInRepo(path, content, message, sha){
-      if(!CAN_WRITE) throw new Error("Write disabled by config.");
-      if(!GH_TOKEN){
-        const tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
-        if(!tok) throw new Error("Write cancelled (no token)");
-        GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
+/* =================== STATE =================== */
+let GH_TOKEN  = localStorage.getItem("ghToken") || "";
+let VIEW_MODE = localStorage.getItem("viewMode") || "md";
+let EXPORT_FMT = localStorage.getItem("dav:exportFmt") || "md";
+
+const VIS_KEY        = (mode)=>`dav:colVisible:${mode}`;
+const WIDTH_KEY      = (mode)=>`dav:colWidths:${mode}`;
+const SIDE_VISIBLE_KEY = "dav:sideVisible";
+const SIDE_COLS_KEY_FN  = (mode)=>`dav:sideCols:${mode}`;
+const CAN_WRITE = ()=> !!(CFG.permissions && CFG.permissions.write && SRC.type==="github");
+
+let HEADERS=[], ROWS=[], FILES=[];
+const SELECTED = new Set();
+let COL_VISIBLE=[], COL_WIDTHS=[];
+let INDEX_ROWS=[];
+let SORT_COL=-1, SORT_DIR=1;
+let EDIT_INDEX = -1;
+let FILTERS = [];
+let HOVER_INDEX = -1;
+let SIDE_COLS = [];
+
+/* =================== GITHUB HELPERS (with branch fallback) =================== */
+const ghContentsUrl = (dir)=>`https://api.github.com/repos/${encodeURIComponent(SRC.owner)}/${encodeURIComponent(SRC.repo)}/contents/${encodeURIComponent(dir||"")}?ref=${encodeURIComponent(ACTIVE_BRANCH)}`;
+const ghRawUrl = (path)=>`https://raw.githubusercontent.com/${SRC.owner}/${SRC.repo}/${ACTIVE_BRANCH}/${path}`;
+
+async function ghList(dir){
+  const url = ghContentsUrl(dir);
+  let res = await fetch(url);
+  if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
+  if(!res.ok){
+    // Try branch fallback once (main -> master)
+    if ((ACTIVE_BRANCH==="main" || ACTIVE_BRANCH==="master")){
+      const alt = ACTIVE_BRANCH==="main" ? "master" : "main";
+      const altUrl = url.replace(/ref=[^&]+/, "ref="+encodeURIComponent(alt));
+      let res2 = await fetch(altUrl);
+      if(!res2.ok && GH_TOKEN){ res2 = await fetch(altUrl, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
+      if(res2.ok){ ACTIVE_BRANCH = alt; console.warn("Branch fallback to", ACTIVE_BRANCH); return res2.json(); }
+    }
+    const msg = `GitHub list error ${res.status} at ${url}`;
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+async function ghListAll(dir){
+  const entries = await ghList(dir);
+  const out = [];
+  for (const it of entries) {
+    if (it.type === "file") out.push(it);
+    else if (it.type === "dir") out.push(...await ghListAll(it.path));
+  }
+  return out;
+}
+
+async function fetchText(url){
+  let res = await fetch(url);
+  if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
+  if(!res.ok) throw new Error("Fetch error "+res.status+" for "+url);
+  return res.text();
+}
+
+const b64 = (s)=>btoa(unescape(encodeURIComponent(s)));
+
+async function createFileInRepo(path, content, message){
+  if(!CAN_WRITE()) throw new Error("Write disabled by config.");
+  if(!GH_TOKEN){
+    const tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
+    if(!tok) throw new Error("Write cancelled (no token)");
+    GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
+  }
+  const url = `https://api.github.com/repos/${SRC.owner}/${SRC.repo}/contents/${encodeURIComponent(path)}`;
+  const body = { message: message||("Add "+path), content: b64(content), branch: ACTIVE_BRANCH };
+  const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
+  if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
+  return res.json();
+}
+
+async function updateFileInRepo(path, content, message, sha){
+  if(!CAN_WRITE()) throw new Error("Write disabled by config.");
+  if(!GH_TOKEN){
+    const tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
+    if(!tok) throw new Error("Write cancelled (no token)");
+    GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
+  }
+  const url = `https://api.github.com/repos/${SRC.owner}/${SRC.repo}/contents/${encodeURIComponent(path)}`;
+  const body = { message: message||("Edit "+path), content: b64(content), sha, branch: ACTIVE_BRANCH };
+  const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
+  if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
+  return res.json();
+}
+
+/* =================== PARSING / CLEANUP =================== */
+function splitCells(line){
+  let s=line.trim(); s=s.replace(/^\|/,"").replace(/\|$/,"");
+  const parts=[]; let cur="", esc=false;
+  for(let i=0;i<s.length;i++){
+    const ch=s[i];
+    if(esc){ cur+=ch; esc=false; continue; }
+    if(ch==="\\"){ esc=true; continue; }
+    if(ch==="|"){ parts.push(cur.trim()); cur=""; continue; }
+    cur+=ch;
+  }
+  parts.push(cur.trim()); return parts;
+}
+function parseFirstTable(md){
+  const lines=md.split(/\r?\n/);
+  for(let i=0;i<lines.length-1;i++){
+    const headerLine=lines[i], sepLine=lines[i+1]||"";
+    if(/^\s*\|.*\|\s*$/.test(headerLine) && /^\s*\|\s*:?-{3,}.*\|\s*$/.test(sepLine)){
+      const headers=splitCells(headerLine), rows=[];
+      for(let j=i+2;j<lines.length;j++){
+        const ln=lines[j]; if(!/^\s*\|.*\|\s*$/.test(ln)) break;
+        const cells=splitCells(ln); if(cells.every(c=>c.trim()==="")) continue;
+        rows.push(cells);
       }
-      const url = `https://api.github.com/repos/${SRC.owner}/${SRC.repo}/contents/${encodeURIComponent(path)}`;
-      const body = { message: message||("Edit "+path), content: b64(content), sha, branch: SRC.branch };
-      const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
-      if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
-      return res.json();
+      return {headers,rows};
     }
+  }
+  return null;
+}
+const isObj = (v)=>v && typeof v==='object' && !Array.isArray(v);
 
-    // ====== Parsing & cleanup ======
-    function splitCells(line){
-      let s=line.trim(); s=s.replace(/^\|/,"").replace(/\|$/,"");
-      const parts=[]; let cur="", esc=false;
-      for(let i=0;i<s.length;i++){ const ch=s[i];
-        if(esc){ cur+=ch; esc=false; continue; }
-        if(ch==="\\"){ esc=true; continue; }
-        if(ch==="|"){ parts.push(cur.trim()); cur=""; continue; }
-        cur+=ch;
+function cleanBulletLines(text){
+  if(text==null) return "";
+  let raw = String(text);
+  raw = raw
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\r/g, "");
+  const lines = raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  if(lines.length<=1) return raw.trim();
+  const cleaned = lines.map(l=>l
+    .replace(/^[-*•–—]\s+/,"")
+    .replace(/^\d+[\.\)]\s+/,"")
+    .replace(/^\(\d+\)\s+/,"")
+    .replace(/^- \[[ xX]\]\s+/,"")
+  );
+  return cleaned.map((l,i)=>`${i+1}. ${l}`).join("\n");
+}
+function flattenJson(obj){
+  const out={};
+  for(const [k,v] of Object.entries(obj||{})){
+    if(isObj(v)){
+      for(const [k2,v2] of Object.entries(v)){
+        out[`${k}.${k2}`]=cleanBulletLines(isObj(v2)?JSON.stringify(v2):Array.isArray(v2)?v2.join("\n"):v2);
       }
-      parts.push(cur.trim()); return parts;
-    }
-    function parseFirstTable(md){
-      const lines=md.split(/\r?\n/);
-      for(let i=0;i<lines.length-1;i++){
-        const headerLine=lines[i], sepLine=lines[i+1]||"";
-        if(/^\s*\|.*\|\s*$/.test(headerLine) && /^\s*\|\s*:?-{3,}.*\|\s*$/.test(sepLine)){
-          const headers=splitCells(headerLine), rows=[];
-          for(let j=i+2;j<lines.length;j++){
-            const ln=lines[j]; if(!/^\s*\|.*\|\s*$/.test(ln)) break;
-            const cells=splitCells(ln); if(cells.every(c=>c.trim()==="")) continue;
-            rows.push(cells);
-          }
-          return {headers,rows};
-        }
-      }
-      return null;
-    }
-    const isObj = (v)=>v && typeof v==='object' && !Array.isArray(v);
+    } else if(Array.isArray(v)){ out[k]=cleanBulletLines(v.join("\n"));
+    } else { out[k]=cleanBulletLines(v); }
+  }
+  return out;
+}
+function rowFromFlatGrowHeaders(flat){
+  if(HEADERS.length===0){
+    HEADERS = Object.keys(flat);
+    COL_VISIBLE = HEADERS.map(()=>true);
+    COL_WIDTHS  = HEADERS.map(()=>null);
+    return HEADERS.map(h=>flat[h]??"");
+  }
+  const oldHeaders = HEADERS.slice();
+  for(const k of Object.keys(flat)){ if(!HEADERS.includes(k)) HEADERS.push(k); }
+  if(HEADERS.length !== oldHeaders.length){
+    ROWS = ROWS.map(r=>{
+      const map={}; oldHeaders.forEach((h,i)=>map[h]=r[i]??"");
+      return HEADERS.map(h=>map[h]??"");
+    });
+    while(COL_VISIBLE.length < HEADERS.length) COL_VISIBLE.push(true);
+    while(COL_WIDTHS.length  < HEADERS.length) COL_WIDTHS.push(null);
+  }
+  return HEADERS.map(h=>flat[h]??"");
+}
+function hideDefaultsIfFresh(){
+  const saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
+  if(saved) return;
+  COL_VISIBLE = HEADERS.map(()=>true);
+}
 
-    // Normalize <br>, strip tags, remove bullets, renumber lines
-    function cleanBulletLines(text){
-      if(text==null) return "";
-      let raw = String(text);
-      raw = raw
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<\/?[^>]+>/g, "")
-        .replace(/&nbsp;/gi, " ")
-        .replace(/\r/g, "");
-      const lines = raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
-      if(lines.length<=1) return raw.trim();
-      const cleaned = lines.map(l=>l
-        .replace(/^[-*•–—]\s+/,"")
-        .replace(/^\d+[\.\)]\s+/,"")
-        .replace(/^\(\d+\)\s+/,"")
-        .replace(/^- \[[ xX]\]\s+/,"")
-      );
-      return cleaned.map((l,i)=>`${i+1}. ${l}`).join("\n");
-    }
+/* =================== ATTRIBUTE PANEL =================== */
+function restoreSideCols(){
+  const saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
+  if(saved){
+    try{ const arr = JSON.parse(saved); if(Array.isArray(arr)) { SIDE_COLS = arr.filter(h=>HEADERS.includes(h)); return; } }catch{}
+  }
+  SIDE_COLS = [];
+}
+function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch{} }
+function sideColsIndices(){ return SIDE_COLS.map(name => HEADERS.indexOf(name)).filter(i => i>=0); }
 
-    function flattenJson(obj){
-      const out={};
-      for(const [k,v] of Object.entries(obj||{})){
-        if(isObj(v)){
-          for(const [k2,v2] of Object.entries(v)){
-            out[`${k}.${k2}`]=cleanBulletLines(isObj(v2)?JSON.stringify(v2):Array.isArray(v2)?v2.join("\n"):v2);
-          }
-        } else if(Array.isArray(v)){ out[k]=cleanBulletLines(v.join("\n"));
-        } else { out[k]=cleanBulletLines(v); }
-      }
-      return out;
-    }
+/* =================== TABLE RENDERING =================== */
+function renderTable(headers, rows){
+  const tbl = document.getElementById("sheet");
+  tbl.innerHTML="";
+  const colgroup=document.createElement("colgroup"); colgroup.id="colgroup";
+  const selCol=document.createElement("col"); selCol.className="col-sel"; colgroup.appendChild(selCol);
+  tbl.appendChild(colgroup);
 
-    // JSON header growth
-    function rowFromFlatGrowHeaders(flat){
-      if(HEADERS.length===0){
-        HEADERS = Object.keys(flat);
-        COL_VISIBLE = HEADERS.map(()=>true);
-        COL_WIDTHS  = HEADERS.map(()=>null);
-        return HEADERS.map(h=>flat[h]??"");
-      }
-      const oldHeaders = HEADERS.slice();
-      for(const k of Object.keys(flat)){
-        if(!HEADERS.includes(k)) HEADERS.push(k);
-      }
-      if(HEADERS.length !== oldHeaders.length){
-        ROWS = ROWS.map(r=>{
-          const map={}; oldHeaders.forEach((h,i)=>map[h]=r[i]??"");
-          return HEADERS.map(h=>map[h]??"");
-        });
-        while(COL_VISIBLE.length < HEADERS.length) COL_VISIBLE.push(true);
-        while(COL_WIDTHS.length  < HEADERS.length) COL_WIDTHS.push(null);
-      }
-      return HEADERS.map(h=>flat[h]??"");
-    }
+  const thead=document.createElement("thead");
+  const trh=document.createElement("tr");
+  const thSel=document.createElement("th"); thSel.className="selCol";
+  const master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
+  master.addEventListener("change",()=>toggleSelectVisible(master.checked,true));
+  thSel.appendChild(master); trh.appendChild(thSel);
 
-    function hideDefaultsIfFresh(){
-      const saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
-      if(saved) return;
-      COL_VISIBLE = HEADERS.map(()=>true);
-    }
+  headers.forEach((h,i)=>{
+    const th=document.createElement("th"); th.draggable=true; th.dataset.col=String(i);
+    th.style.position="sticky"; th.style.top="0";
+    const span=document.createElement("span"); span.className="headerInner"; span.textContent=h||("Column "+(i+1));
+    span.addEventListener("click",()=>onSortClick(i)); th.appendChild(span);
+    const si=document.createElement("span"); si.className="sortIndicator"; si.textContent=(SORT_COL===i?(SORT_DIR===1?"▲":"▼"):""); span.appendChild(si);
+    const handle=document.createElement("div"); handle.className="resizer";
+    handle.addEventListener("mousedown",startResize.bind(null,i));
+    handle.addEventListener("dblclick",autoFitColumn.bind(null,i));
+    th.appendChild(handle);
+    th.addEventListener("dragstart",(ev)=>{ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",i); });
+    th.addEventListener("dragend",()=>th.classList.remove("dragging"));
+    th.addEventListener("dragover",(ev)=>ev.preventDefault());
+    th.addEventListener("drop",(ev)=>{ ev.preventDefault(); const from=parseInt(ev.dataTransfer.getData("text/plain"),10); const to=i; if(Number.isInteger(from)&&from!==to) reorderColumns(from,to); });
+    trh.appendChild(th);
+    const c=document.createElement("col"); c.dataset.col=String(i); colgroup.appendChild(c);
+  });
+  thead.appendChild(trh);
 
-    // ====== Side (Attribute) Panel ======
-    function restoreSideCols(){
-      const saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
-      if(saved){
-        try{ const arr = JSON.parse(saved); if(Array.isArray(arr)) { SIDE_COLS = arr.filter(h=>HEADERS.includes(h)); return; } }catch{}
-      }
-      SIDE_COLS = []; // data-agnostic default: none selected
-    }
-    function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch{} }
-    function sideColsIndices(){ return SIDE_COLS.map(name => HEADERS.indexOf(name)).filter(i => i>=0); }
+  const trf=document.createElement("tr"); trf.className="filters";
+  const thfSel=document.createElement("th"); thfSel.className="selCol"; trf.appendChild(thfSel);
+  FILTERS = new Array(headers.length).fill("");
+  headers.forEach((h,i)=>{
+    const th=document.createElement("th"); th.dataset.col=String(i);
+    const inp=document.createElement("input"); inp.type="search"; inp.placeholder="Filter…";
+    inp.addEventListener("input",()=>{ FILTERS[i]=inp.value.trim().toLowerCase(); applySearchAndFilters(); });
+    th.appendChild(inp); trf.appendChild(th);
+  });
+  thead.appendChild(trf);
 
-    // ====== Table render ======
-    function renderTable(headers, rows){
-      const tbl = document.getElementById("sheet");
-      tbl.innerHTML="";
-      const colgroup=document.createElement("colgroup"); colgroup.id="colgroup";
-      const selCol=document.createElement("col"); selCol.className="col-sel"; colgroup.appendChild(selCol);
-      tbl.appendChild(colgroup);
+  const tbody=document.createElement("tbody");
+  rows.forEach((r,idx)=>{
+    const tr=document.createElement("tr"); tr.dataset.index=String(idx);
+    tr.addEventListener("click",(e)=>{ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); const multi=e.shiftKey; const next=!cb.checked; setRowSelection(idx, next, multi); });
+    tr.addEventListener("mouseenter",()=>{ HOVER_INDEX=idx; updateAttributePanel(); });
+    tr.addEventListener("mouseleave",()=>{ HOVER_INDEX=-1; updateAttributePanel(); });
 
-      const thead=document.createElement("thead");
+    const tdSel=document.createElement("td"); tdSel.className="selCol";
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=SELECTED.has(idx);
+    cb.addEventListener("click",(e)=>{ e.stopPropagation(); setRowSelection(idx, e.target.checked, e.shiftKey); });
+    tdSel.appendChild(cb); tr.appendChild(tdSel);
 
-      // Header row
-      const trh=document.createElement("tr");
-      const thSel=document.createElement("th"); thSel.className="selCol";
-      const master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
-      master.addEventListener("change",()=>toggleSelectVisible(master.checked,true));
-      thSel.appendChild(master); trh.appendChild(thSel);
+    r.forEach((v,i)=>{ const td=document.createElement("td"); td.dataset.col=String(i); td.textContent=(v==null?"":v); tr.appendChild(td); });
 
-      headers.forEach((h,i)=>{
-        const th=document.createElement("th"); th.draggable=true; th.dataset.col=String(i);
-        th.style.position="sticky"; th.style.top="0";
+    if(SELECTED.has(idx)) tr.classList.add("selected");
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(thead); tbl.appendChild(tbody);
 
-        const span=document.createElement("span"); span.className="headerInner"; span.textContent=h||("Column "+(i+1));
-        span.addEventListener("click",()=>onSortClick(i)); th.appendChild(span);
-        const si=document.createElement("span"); si.className="sortIndicator"; si.textContent=(SORT_COL===i?(SORT_DIR===1?"▲":"▼"):""); span.appendChild(si);
+  restoreColState(); hideDefaultsIfFresh();
+  restoreSideCols();
 
-        const handle=document.createElement("div"); handle.className="resizer";
-        handle.addEventListener("mousedown",startResize.bind(null,i));
-        handle.addEventListener("dblclick",autoFitColumn.bind(null,i));
-        th.appendChild(handle);
+  applyColumnVisibility(true); applyColumnWidths();
+  buildIndexRows(); applySearchAndFilters(); updateCounts(); buildColumnsPanel(); buildSideColsPanel(); updateActionButtons(); updateAttributePanel(); buildExportPanel(); updateExportUI();
 
-        // Drag reorder
-        th.addEventListener("dragstart",(ev)=>{ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",i); });
-        th.addEventListener("dragend",()=>th.classList.remove("dragging"));
-        th.addEventListener("dragover",(ev)=>ev.preventDefault());
-        th.addEventListener("drop",(ev)=>{ ev.preventDefault(); const from=parseInt(ev.dataTransfer.getData("text/plain"),10); const to=i; if(Number.isInteger(from)&&from!==to) reorderColumns(from,to); });
+  if(!CAN_WRITE()){
+    document.getElementById("addBtn").style.display="none";
+    document.getElementById("editBtn").style.display="none";
+  }
+}
 
-        trh.appendChild(th);
-        const c=document.createElement("col"); c.dataset.col=String(i); colgroup.appendChild(c);
-      });
-      thead.appendChild(trh);
+/* =================== SELECTION / SEARCH / SORT =================== */
+function setRowSelection(idx, on, multi){
+  if(!multi){
+    const prev = Array.from(SELECTED);
+    SELECTED.clear();
+    prev.forEach(i=>{
+      const tr = document.querySelector(`#sheet tbody tr[data-index="${i}"]`);
+      if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
+    });
+  }
+  const tr = document.querySelector(`#sheet tbody tr[data-index="${idx}"]`);
+  if(on){
+    SELECTED.add(idx);
+    if(tr){ tr.classList.add("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=true; }
+  } else {
+    SELECTED.delete(idx);
+    if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
+  }
+  updateCounts(); updateActionButtons(); updateAttributePanel();
+}
+function toggleSelectVisible(on, forceMulti){
+  const visibleRows = Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)"));
+  if(!forceMulti){
+    if(visibleRows.length){ const idx=+visibleRows[0].dataset.index; setRowSelection(idx, true, false); }
+    return;
+  }
+  visibleRows.forEach(tr=>{
+    const idx=+tr.dataset.index;
+    const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=on;
+    if(on){ SELECTED.add(idx); tr.classList.add("selected"); } else { SELECTED.delete(idx); tr.classList.remove("selected"); }
+  });
+  updateCounts(); updateActionButtons(); updateAttributePanel();
+}
+function updateActionButtons(){
+  document.getElementById("editBtn").disabled = SELECTED.size !== 1 || !CAN_WRITE();
+  document.getElementById("copyBtn").disabled = (SELECTED.size < 1) || (EXPORT_FMT === "pdf");
+  const copyBtn = document.getElementById("copyBtn");
+  if(copyBtn) copyBtn.title = EXPORT_FMT==="pdf" ? "Copy disabled for PDF" : "Copy (uses chosen export format)";
+}
+function updateCounts() {
+  const total = ROWS.length;
+  const visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
+  const sel = SELECTED.size;
+  const el = document.getElementById("count");
+  if (el) el.textContent = (visible === total ? `${total} rows` : `Showing ${visible} of ${total}`) + ` • ${sel} selected`;
+}
+function buildIndexRows(){
+  const bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
+  INDEX_ROWS=bodyRows.map(tr=>{
+    const texts = [];
+    tr.querySelectorAll('td[data-col]').forEach(td=>texts.push(td.textContent.toLowerCase()));
+    return { tr, texts };
+  });
+}
+function applySearchAndFilters(){
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const terms = q.split(/\s+/).filter(Boolean);
+  INDEX_ROWS.forEach(({tr, texts})=>{
+    const globalHit = terms.every(t => texts.some(x => x.includes(t)));
+    const perColHit = FILTERS.every((f,i)=>{
+      if(!f) return true;
+      const cell = texts[i] || "";
+      return cell.includes(f);
+    });
+    tr.classList.toggle("hide", !(globalHit && perColHit));
+  });
+  updateCounts();
+}
+(function setupSearchOnce(){
+  const q=document.getElementById("q");
+  const debounce=(fn,ms)=>{ let t; return ()=>{ clearTimeout(t); t=setTimeout(fn,ms); }; };
+  q.addEventListener("input", debounce(applySearchAndFilters,120));
+})();
 
-      // Filters row
-      const trf=document.createElement("tr"); trf.className="filters";
-      const thfSel=document.createElement("th"); thfSel.className="selCol"; trf.appendChild(thfSel);
-      FILTERS = new Array(headers.length).fill("");
-      headers.forEach((h,i)=>{
-        const th=document.createElement("th"); th.dataset.col=String(i);
-        const inp=document.createElement("input"); inp.type="search"; inp.placeholder="Filter…";
-        inp.addEventListener("input",()=>{ FILTERS[i]=inp.value.trim().toLowerCase(); applySearchAndFilters(); });
-        th.appendChild(inp); trf.appendChild(th);
-      });
-      thead.appendChild(trf);
+function onSortClick(i){
+  if(SORT_COL===i) SORT_DIR=-SORT_DIR; else { SORT_COL=i; SORT_DIR=1; }
+  const zipped = ROWS.map((row,idx)=>({row, file:FILES[idx]}));
+  zipped.sort((A,B)=>{
+    const va=(A.row[i]??"").toString().toLowerCase();
+    const vb=(B.row[i]??"").toString().toLowerCase();
+    if(va<vb) return -1*SORT_DIR; if(va>vb) return 1*SORT_DIR; return 0;
+  });
+  ROWS = zipped.map(z=>z.row);
+  FILES= zipped.map(z=>z.file);
+  SELECTED.clear();
+  renderTable(HEADERS, ROWS);
+}
+function reorderColumns(from,to){
+  const move=(arr)=>{ const x=arr.splice(from,1)[0]; arr.splice(to,0,x); };
+  move(HEADERS); move(COL_VISIBLE); move(COL_WIDTHS);
+  FILTERS = moveFilters(FILTERS, from, to);
+  ROWS = ROWS.map(r=>{ const x=r.slice(); const cell=x.splice(from,1)[0]; x.splice(to,0,cell); return x; });
+  renderTable(HEADERS, ROWS);
+}
+function moveFilters(arr, from, to){
+  const x = arr.slice(); const v = x.splice(from,1)[0]; x.splice(to,0,v); return x;
+}
 
-      const tbody=document.createElement("tbody");
-      rows.forEach((r,idx)=>{
-        const tr=document.createElement("tr"); tr.dataset.index=String(idx);
-        tr.addEventListener("click",(e)=>{ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); const multi=e.shiftKey; const next=!cb.checked; setRowSelection(idx, next, multi); });
-        tr.addEventListener("mouseenter",()=>{ HOVER_INDEX=idx; updateAttributePanel(); });
-        tr.addEventListener("mouseleave",()=>{ HOVER_INDEX=-1; updateAttributePanel(); });
+/* =================== COLUMN VISIBILITY / WIDTHS =================== */
+function applyColumnVisibility(save=false){
+  const ths=document.querySelectorAll("#sheet thead th[data-col]");
+  const tds=document.querySelectorAll("#sheet tbody td[data-col]");
+  const cols=document.querySelectorAll("#colgroup col[data-col]");
+  const filtThs=document.querySelectorAll("#sheet thead tr.filters th[data-col]");
+  ths.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
+  filtThs.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
+  tds.forEach(td=>{ const i=+td.dataset.col; const hide=COL_VISIBLE[i]===false; td.classList.toggle("hidden-col", hide); });
+  cols.forEach(col=>{ const i=+col.dataset.col; const hide=COL_VISIBLE[i]===false; col.style.width = hide ? "0px" : (COL_WIDTHS[i] ? COL_WIDTHS[i]+"px" : ""); });
+  if(save) saveColState();
+}
+function applyColumnWidths(){
+  const colgroup=document.getElementById("colgroup"); if(!colgroup) return;
+  COL_WIDTHS.forEach((w,i)=>{
+    let col=colgroup.querySelector(`col[data-col="${i}"]`);
+    if(!col){ col=document.createElement("col"); col.dataset.col=String(i); colgroup.appendChild(col); }
+    col.style.width = (COL_VISIBLE[i]===false) ? "0px" : (w? w+"px" : "");
+  });
+  saveColState();
+}
+function saveColState(){ try{
+  localStorage.setItem(VIS_KEY(VIEW_MODE), JSON.stringify(COL_VISIBLE));
+  localStorage.setItem(WIDTH_KEY(VIEW_MODE), JSON.stringify(COL_WIDTHS));
+}catch{} }
+function restoreColState(){ try{
+  const vis=JSON.parse(localStorage.getItem(VIS_KEY(VIEW_MODE))||"null");
+  const wds=JSON.parse(localStorage.getItem(WIDTH_KEY(VIEW_MODE))||"null");
+  if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else COL_VISIBLE=HEADERS.map(()=>true);
+  if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else COL_WIDTHS=HEADERS.map(()=>null);
+}catch{ COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null); } }
 
-        const tdSel=document.createElement("td"); tdSel.className="selCol";
-        const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=SELECTED.has(idx);
-        cb.addEventListener("click",(e)=>{ e.stopPropagation(); setRowSelection(idx, e.target.checked, e.shiftKey); });
-        tdSel.appendChild(cb); tr.appendChild(tdSel);
+/* Column resizing */
+let resizeState=null;
+function startResize(i,ev){
+  ev.preventDefault();
+  const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
+  const col=document.querySelector(`#colgroup col[data-col="${i}"]`);
+  const startX=ev.clientX, startW=th.getBoundingClientRect().width;
+  resizeState={i,startX,startW,col};
+  window.addEventListener("mousemove",onResizeMove);
+  window.addEventListener("mouseup",endResize);
+  document.body.style.cursor="col-resize";
+}
+function onResizeMove(ev){
+  if(!resizeState) return;
+  const {i,startX,startW,col}=resizeState;
+  const w=Math.max(60, Math.round(startW+(ev.clientX-startX)));
+  COL_WIDTHS[i]=w;
+  if(col) col.style.width=w+"px";
+}
+function endResize(){
+  window.removeEventListener("mousemove",onResizeMove);
+  window.removeEventListener("mouseup",endResize);
+  document.body.style.cursor="";
+  resizeState=null;
+  saveColState();
+}
+function autoFitColumn(i){
+  const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
+  const cells=Array.from(document.querySelectorAll(`#sheet tbody td[data-col="${i}"]`));
+  const measure=el=>Math.ceil(el.getBoundingClientRect().width);
+  let maxW=measure(th);
+  cells.forEach(td=>{ maxW=Math.max(maxW, measure(td)); });
+  maxW=Math.min(Math.max(80, maxW+12), 800);
+  COL_WIDTHS[i]=maxW;
+  applyColumnWidths();
+}
 
-        r.forEach((v,i)=>{ const td=document.createElement("td"); td.dataset.col=String(i); td.textContent=(v==null?"":v); tr.appendChild(td); });
+/* =================== MENUS =================== */
+function buildColumnsPanel(){
+  const panel=document.getElementById("colsPanel");
+  panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation());
+  HEADERS.forEach((h,i)=>{
+    const row=document.createElement("div"); row.className="panelRow";
+    const label=document.createElement("span"); label.className="label"; label.textContent=h||("Column "+(i+1));
+    const btn=document.createElement("button"); btn.className="togglebtn";
+    const isOn = COL_VISIBLE[i] !== false;
+    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+    btn.title = (isOn ? "Hide" : "Show") + " column";
+    btn.addEventListener("click", ()=>{
+      const now = btn.getAttribute("aria-pressed")!=="true";
+      btn.setAttribute("aria-pressed", now?"true":"false");
+      COL_VISIBLE[i] = now;
+      applyColumnVisibility(true);
+      buildIndexRows(); applySearchAndFilters();
+      btn.title = (now ? "Hide" : "Show") + " column";
+    });
+    row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
+  });
+  const note=document.createElement("div"); note.className="note";
+  note.textContent="Toggle column visibility. Tips: drag header edge to resize (double-click to auto-fit), drag headers to reorder, click header to sort.";
+  panel.appendChild(note);
+}
+(function setupColumnsUIOnce(){
+  const btn=document.getElementById("colsBtn"); const panel=document.getElementById("colsPanel");
+  btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
+})();
 
-        if(SELECTED.has(idx)) tr.classList.add("selected");
-        tbody.appendChild(tr);
-      });
-      tbl.appendChild(thead); tbl.appendChild(tbody);
+function buildSideColsPanel(){
+  const panel=document.getElementById("sideColsPanel");
+  panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation());
+  const chosen = new Set(SIDE_COLS);
+  HEADERS.forEach((h)=>{
+    const row=document.createElement("div"); row.className="panelRow";
+    const label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
+    const btn=document.createElement("button"); btn.className="togglebtn";
+    const isOn = chosen.has(h);
+    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+    btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
+    btn.addEventListener("click", ()=>{
+      const now = btn.getAttribute("aria-pressed")!=="true";
+      btn.setAttribute("aria-pressed", now?"true":"false");
+      if(now) chosen.add(h); else chosen.delete(h);
+      SIDE_COLS = Array.from(chosen); saveSideCols(); updateAttributePanel();
+      btn.title = (now ? "Remove from" : "Add to") + " Attribute Panel";
+    });
+    row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
+  });
+  const note=document.createElement("div"); note.className="note";
+  note.textContent="Choose which columns appear on the right (saved per view mode).";
+  panel.appendChild(note);
+}
+(function setupSideColsUIOnce(){
+  const btn=document.getElementById("sideColsBtn"); const panel=document.getElementById("sideColsPanel");
+  btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
+})();
 
-      restoreColState(); hideDefaultsIfFresh();
-      restoreSideCols();
-
-      applyColumnVisibility(true); applyColumnWidths();
-      buildIndexRows(); applySearchAndFilters(); updateCounts(); buildColumnsPanel(); buildSideColsPanel(); updateActionButtons(); updateAttributePanel(); buildExportPanel(); updateExportUI();
-
-      if(!CAN_WRITE){
-        document.getElementById("addBtn").style.display="none";
-        document.getElementById("editBtn").style.display="none";
-      }
-    }
-
-    // ====== Selection & counts ======
-    function setRowSelection(idx, on, multi){
-      if(!multi){
-        const prev = Array.from(SELECTED);
-        SELECTED.clear();
-        prev.forEach(i=>{
-          const tr = document.querySelector(`#sheet tbody tr[data-index="${i}"]`);
-          if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
-        });
-      }
-      const tr = document.querySelector(`#sheet tbody tr[data-index="${idx}"]`);
-      if(on){
-        SELECTED.add(idx);
-        if(tr){ tr.classList.add("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=true; }
-      } else {
-        SELECTED.delete(idx);
-        if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
-      }
-      updateCounts(); updateActionButtons(); updateAttributePanel();
-    }
-    function toggleSelectVisible(on, forceMulti){
-      const visibleRows = Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)"));
-      if(!forceMulti){
-        if(visibleRows.length){ const idx=+visibleRows[0].dataset.index; setRowSelection(idx, true, false); }
-        return;
-      }
-      visibleRows.forEach(tr=>{
-        const idx=+tr.dataset.index;
-        const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=on;
-        if(on){ SELECTED.add(idx); tr.classList.add("selected"); } else { SELECTED.delete(idx); tr.classList.remove("selected"); }
-      });
-      updateCounts(); updateActionButtons(); updateAttributePanel();
-    }
-
-    function updateActionButtons(){
-      document.getElementById("editBtn").disabled = SELECTED.size !== 1 || !CAN_WRITE;
-      document.getElementById("copyBtn").disabled = (SELECTED.size < 1) || (EXPORT_FMT === "pdf");
-      const copyBtn = document.getElementById("copyBtn");
-      if(copyBtn) copyBtn.title = EXPORT_FMT==="pdf" ? "Copy disabled for PDF" : "Copy (uses chosen export format)";
-    }
-
-    function updateCounts() {
-      const total = ROWS.length;
-      const visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
-      const sel = SELECTED.size;
-      const el = document.getElementById("count");
-      if (el) {
-        el.textContent =
-          (visible === total ? `${total} rows` : `Showing ${visible} of ${total}`) +
-          ` • ${sel} selected`;
-      }
-    }
-
-    function buildIndexRows(){
-      const bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
-      INDEX_ROWS=bodyRows.map(tr=>{
-        const texts = [];
-        tr.querySelectorAll('td[data-col]').forEach(td=>texts.push(td.textContent.toLowerCase()));
-        return { tr, texts };
-      });
-    }
-    function applySearchAndFilters(){
-      const q = document.getElementById("q").value.trim().toLowerCase();
-      const terms = q.split(/\s+/).filter(Boolean);
-      INDEX_ROWS.forEach(({tr, texts})=>{
-        const globalHit = terms.every(t => texts.some(x => x.includes(t)));
-        const perColHit = FILTERS.every((f,i)=>{
-          if(!f) return true;
-          const cell = texts[i] || "";
-          return cell.includes(f);
-        });
-        tr.classList.toggle("hide", !(globalHit && perColHit));
-      });
-      updateCounts();
-    }
-    (function setupSearchOnce(){
-      const q=document.getElementById("q");
-      const debounce=(fn,ms)=>{ let t; return ()=>{ clearTimeout(t); t=setTimeout(fn,ms); }; };
-      q.addEventListener("input", debounce(applySearchAndFilters,120));
-    })();
-
-    // ====== Sorting / reordering ======
-    function onSortClick(i){
-      if(SORT_COL===i) SORT_DIR=-SORT_DIR; else { SORT_COL=i; SORT_DIR=1; }
-      const zipped = ROWS.map((row,idx)=>({row, file:FILES[idx]}));
-      zipped.sort((A,B)=>{
-        const va=(A.row[i]??"").toString().toLowerCase();
-        const vb=(B.row[i]??"").toString().toLowerCase();
-        if(va<vb) return -1*SORT_DIR; if(va>vb) return 1*SORT_DIR; return 0;
-      });
-      ROWS = zipped.map(z=>z.row);
-      FILES= zipped.map(z=>z.file);
-      SELECTED.clear();
-      renderTable(HEADERS, ROWS);
-    }
-    function reorderColumns(from,to){
-      const move=(arr)=>{ const x=arr.splice(from,1)[0]; arr.splice(to,0,x); };
-      move(HEADERS); move(COL_VISIBLE); move(COL_WIDTHS);
-      FILTERS = moveFilters(FILTERS, from, to);
-      ROWS = ROWS.map(r=>{ const x=r.slice(); const cell=x.splice(from,1)[0]; x.splice(to,0,cell); return x; });
-      renderTable(HEADERS, ROWS);
-    }
-    function moveFilters(arr, from, to){
-      const x = arr.slice(); const v = x.splice(from,1)[0]; x.splice(to,0,v); return x;
-    }
-
-    // ====== Column visibility & widths ======
-    function applyColumnVisibility(save=false){
-      const ths=document.querySelectorAll("#sheet thead th[data-col]");
-      const tds=document.querySelectorAll("#sheet tbody td[data-col]");
-      const cols=document.querySelectorAll("#colgroup col[data-col]");
-      const filtThs=document.querySelectorAll("#sheet thead tr.filters th[data-col]");
-
-      ths.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
-      filtThs.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
-      tds.forEach(td=>{ const i=+td.dataset.col; const hide=COL_VISIBLE[i]===false; td.classList.toggle("hidden-col", hide); });
-      cols.forEach(col=>{ const i=+col.dataset.col; const hide=COL_VISIBLE[i]===false; col.style.width = hide ? "0px" : (COL_WIDTHS[i] ? COL_WIDTHS[i]+"px" : ""); });
-      if(save) saveColState();
-    }
-    function applyColumnWidths(){
-      const colgroup=document.getElementById("colgroup"); if(!colgroup) return;
-      COL_WIDTHS.forEach((w,i)=>{
-        let col=colgroup.querySelector(`col[data-col="${i}"]`);
-        if(!col){ col=document.createElement("col"); col.dataset.col=String(i); colgroup.appendChild(col); }
-        col.style.width = (COL_VISIBLE[i]===false) ? "0px" : (w? w+"px" : "");
-      });
-      saveColState();
-    }
-    function saveColState(){ try{
-      localStorage.setItem(VIS_KEY(VIEW_MODE), JSON.stringify(COL_VISIBLE));
-      localStorage.setItem(WIDTH_KEY(VIEW_MODE), JSON.stringify(COL_WIDTHS));
-    }catch{} }
-    function restoreColState(){ try{
-      const vis=JSON.parse(localStorage.getItem(VIS_KEY(VIEW_MODE))||"null");
-      const wds=JSON.parse(localStorage.getItem(WIDTH_KEY(VIEW_MODE))||"null");
-      if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else COL_VISIBLE=HEADERS.map(()=>true);
-      if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else COL_WIDTHS=HEADERS.map(()=>null);
-    }catch{ COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null); } }
-
-    // Resizing columns
-    let resizeState=null;
-    function startResize(i,ev){
-      ev.preventDefault();
-      const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
-      const col=document.querySelector(`#colgroup col[data-col="${i}"]`);
-      const startX=ev.clientX, startW=th.getBoundingClientRect().width;
-      resizeState={i,startX,startW,col};
-      window.addEventListener("mousemove",onResizeMove);
-      window.addEventListener("mouseup",endResize);
-      document.body.style.cursor="col-resize";
-    }
-    function onResizeMove(ev){
-      if(!resizeState) return;
-      const {i,startX,startW,col}=resizeState;
-      const w=Math.max(60, Math.round(startW+(ev.clientX-startX)));
-      COL_WIDTHS[i]=w;
-      if(col) col.style.width=w+"px";
-    }
-    function endResize(){
-      window.removeEventListener("mousemove",onResizeMove);
-      window.removeEventListener("mouseup",endResize);
-      document.body.style.cursor="";
-      resizeState=null;
-      saveColState();
-    }
-    function autoFitColumn(i){
-      const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
-      const cells=Array.from(document.querySelectorAll(`#sheet tbody td[data-col="${i}"]`));
-      const measure=el=>Math.ceil(el.getBoundingClientRect().width);
-      let maxW=measure(th);
-      cells.forEach(td=>{ maxW=Math.max(maxW, measure(td)); });
-      maxW=Math.min(Math.max(80, maxW+12), 800);
-      COL_WIDTHS[i]=maxW;
-      applyColumnWidths();
-    }
-
-    // ====== Columns dropdown (icon toggles) ======
-    function buildColumnsPanel(){
-      const panel=document.getElementById("colsPanel");
-      panel.innerHTML="";
-      panel.addEventListener("click",(e)=>e.stopPropagation());
-
-      HEADERS.forEach((h,i)=>{
-        const row=document.createElement("div"); row.className="panelRow";
-        const label=document.createElement("span"); label.className="label"; label.textContent=h||("Column "+(i+1));
-        const btn=document.createElement("button"); btn.className="togglebtn";
-        const isOn = COL_VISIBLE[i] !== false;
-        btn.setAttribute("aria-pressed", isOn ? "true" : "false");
-        btn.title = (isOn ? "Hide" : "Show") + " column";
-        btn.addEventListener("click", ()=>{
-          const now = btn.getAttribute("aria-pressed")!=="true";
-          btn.setAttribute("aria-pressed", now?"true":"false");
-          COL_VISIBLE[i] = now;
-          applyColumnVisibility(true);
-          buildIndexRows(); applySearchAndFilters();
-          btn.title = (now ? "Hide" : "Show") + " column";
-        });
-        row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
-      });
-
-      const note=document.createElement("div"); note.className="note";
-      note.textContent="Table: toggle column visibility. Tips: drag header edge to resize (double-click to auto-fit), drag headers to reorder, click header to sort.";
-      panel.appendChild(note);
-    }
-    (function setupColumnsUIOnce(){
-      const btn=document.getElementById("colsBtn"); const panel=document.getElementById("colsPanel");
-      btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
-      document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
-    })();
-
-    // ====== Side panel fields dropdown (icon toggles) ======
-    function buildSideColsPanel(){
-      const panel=document.getElementById("sideColsPanel");
-      panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation());
-
-      const chosen = new Set(SIDE_COLS);
-      HEADERS.forEach((h)=>{
-        const row=document.createElement("div"); row.className="panelRow";
-        const label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
-        const btn=document.createElement("button"); btn.className="togglebtn";
-        const isOn = chosen.has(h);
-        btn.setAttribute("aria-pressed", isOn ? "true" : "false");
-        btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
-        btn.addEventListener("click", ()=>{
-          const now = btn.getAttribute("aria-pressed")!=="true";
-          btn.setAttribute("aria-pressed", now?"true":"false");
-          if(now) chosen.add(h); else chosen.delete(h);
-          SIDE_COLS = Array.from(chosen); saveSideCols(); updateAttributePanel();
-          btn.title = (now ? "Remove from" : "Add to") + " Attribute Panel";
-        });
-        row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
-      });
-
-      const note=document.createElement("div"); note.className="note";
-      note.textContent="Attribute Panel: choose which columns appear on the right. (Saved per view mode.)";
-      panel.appendChild(note);
-    }
-    (function setupSideColsUIOnce(){
-      const btn=document.getElementById("sideColsBtn"); const panel=document.getElementById("sideColsPanel");
-      btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
-      document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
-    })();
-
-    // ====== Export panel (with PDF) ======
-    function buildExportPanel(){
-      const panel = document.getElementById("exportPanel");
-      panel.innerHTML="";
-      panel.addEventListener("click",(e)=>e.stopPropagation());
-
-      const formats = [
-        {key:"md",   label:"Markdown (.md)"},
-        {key:"csv",  label:"CSV (.csv)"},
-        {key:"json", label:"JSON (.json)"},
-        {key:"pdf",  label:"PDF (print to PDF)"},
-      ];
-      formats.forEach(f=>{
-        const row=document.createElement("div"); row.className="panelRow";
-        const label=document.createElement("span"); label.className="label"; label.textContent=f.label;
-        const radio=document.createElement("button"); radio.className="radiobtn"; radio.setAttribute("role","menuitemradio");
-        radio.setAttribute("aria-checked", EXPORT_FMT===f.key ? "true":"false");
-        radio.title = "Choose "+f.label;
-        radio.addEventListener("click", ()=>{
-          EXPORT_FMT = f.key;
-          localStorage.setItem("dav:exportFmt", EXPORT_FMT);
-          panel.querySelectorAll(".radiobtn").forEach(b=>b.setAttribute("aria-checked","false"));
-          radio.setAttribute("aria-checked","true");
-          updateExportUI();
-        });
-        row.appendChild(label); row.appendChild(radio); panel.appendChild(row);
-      });
-
-      const footer=document.createElement("div"); footer.className="exportFooter";
-      const go=document.createElement("button"); go.className="iconbtn"; go.title="Export now";
-      go.innerHTML = '<svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>';
-      go.addEventListener("click", ()=>{ doExport(); panel.classList.remove("open"); });
-      footer.appendChild(go);
-      panel.appendChild(footer);
-
-      const note=document.createElement("div"); note.className="note";
-      note.textContent="Exports honor selection (if any), visible columns, filters, and sort.";
-      panel.appendChild(note);
-    }
-    (function setupExportUIOnce(){
-      const btn=document.getElementById("exportBtn"); const panel=document.getElementById("exportPanel");
-      btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
-      document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
-      buildExportPanel();
+function buildExportPanel(){
+  const panel = document.getElementById("exportPanel");
+  panel.innerHTML="";
+  panel.addEventListener("click",(e)=>e.stopPropagation());
+  const formats = [
+    {key:"md",   label:"Markdown (.md)"},
+    {key:"csv",  label:"CSV (.csv)"},
+    {key:"json", label:"JSON (.json)"},
+    {key:"pdf",  label:"PDF (print to PDF)"},
+  ];
+  formats.forEach(f=>{
+    const row=document.createElement("div"); row.className="panelRow";
+    const label=document.createElement("span"); label.className="label"; label.textContent=f.label;
+    const radio=document.createElement("button"); radio.className="radiobtn"; radio.setAttribute("role","menuitemradio");
+    radio.setAttribute("aria-checked", EXPORT_FMT===f.key ? "true":"false");
+    radio.title = "Choose "+f.label;
+    radio.addEventListener("click", ()=>{
+      EXPORT_FMT = f.key;
+      localStorage.setItem("dav:exportFmt", EXPORT_FMT);
+      panel.querySelectorAll(".radiobtn").forEach(b=>b.setAttribute("aria-checked","false"));
+      radio.setAttribute("aria-checked","true");
       updateExportUI();
-    })();
-
-    function updateExportUI(){
-      const btn=document.getElementById("exportBtn");
-      if(btn) btn.title = "Export ("+EXPORT_FMT.toUpperCase()+")";
-      updateActionButtons();
-    }
-
-    function selectedOrVisibleRows(){
-      return (SELECTED.size>0)
-        ? Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i])
-        : Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)")).map(tr=>ROWS[+tr.dataset.index]);
-    }
-
-    // Export helpers
-    function toMarkdown(headers,rows,title){
-      const esc=v=>(v==null?"":String(v).replace(/\|/g,"\\|"));
-      const head="| "+headers.map(esc).join(" | ")+" |";
-      const sep ="| "+headers.map(()=> "---").join(" | ")+" |";
-      const body=rows.map(r=>"| "+r.map(esc).join(" | ")+" |").join("\n");
-      return (title?`# ${title}\n\n`:"")+head+"\n"+sep+"\n"+body+"\n";
-    }
-    function toCSV(headers,rows){ function esc(v){ if(v==null)v=""; v=String(v); if(/[\",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
-      const all=[headers,...rows]; return all.map(r=>r.map(esc).join(",")).join("\r\n")+"\r\n"; }
-    function toJSONArray(headers,rows){ return rows.map(r=>{ const o={}; headers.forEach((h,i)=>o[h]=r[i]??""); return o; }); }
-    function download(name,text,mime){ const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
-
-    function escapeHtml(x){ return String(x).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
-    function exportToPDF(headers, rows, title){
-      const style = `
-        <style>
-          body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}
-          h1{font-size:18px;margin:0 0 12px 0}
-          table{width:100%;border-collapse:collapse;table-layout:auto}
-          th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}
-          thead th{background:#f2f4f7;white-space:nowrap;} /* no-wrap headers */
-          td{white-space:pre-wrap;}
-          .meta{color:#555;font-size:11px;margin:8px 0 16px 0}
-          @media print{ body{margin:0;} }
-        </style>`;
-      const headRow = "<tr>"+headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")+"</tr>";
-      const bodyRows = rows.map(r=>"<tr>"+r.map(v=>`<td>${escapeHtml(v ?? "")}</td>`).join("")+"</tr>").join("");
-      const html = `
-        <!doctype html><html><head><meta charset="utf-8">${style}<title>${escapeHtml(title||"Export")}</title></head>
-        <body>
-          <h1>${escapeHtml(title||"Export")}</h1>
-          <div class="meta">Generated: ${new Date().toLocaleString()}</div>
-          <table><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table>
-          <script>window.onload=()=>{try{window.print();}catch(e){}}<\/script>
-        </body></html>`;
-      const w=window.open("", "_blank");
-      if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; }
-      w.document.open(); w.document.write(html); w.document.close();
-    }
-
-    function slugify(s){ return String(s||"export").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "export"; }
-    function currentTitle(){ const t=(titleEl && titleEl.textContent.trim()) || document.title || "DAV Export"; return t; }
-    function doExport(){
-      if(!HEADERS.length) return;
-      const rows = selectedOrVisibleRows();
-      const {fh,fr} = filterCols(HEADERS, rows);
-      const base = slugify(currentTitle());
-
-      if(EXPORT_FMT==="md"){
-        const md=toMarkdown(fh,fr,currentTitle());
-        download(`${base}.md`, md, "text/markdown");
-      } else if(EXPORT_FMT==="csv"){
-        const csv=toCSV(fh,fr);
-        download(`${base}.csv`, csv, "text/csv");
-      } else if(EXPORT_FMT==="json"){
-        const json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n";
-        download(`${base}.json`, json, "application/json");
-      } else if(EXPORT_FMT==="pdf"){
-        exportToPDF(fh, fr, currentTitle());
-      }
-    }
-
-    function visibleCols(){ const idxs=[]; COL_VISIBLE.forEach((v,i)=>{ if(v!==false) idxs.push(i); }); return idxs; }
-    function filterCols(headers,rows){ const cols=visibleCols(); return { fh: cols.map(i=>headers[i]), fr: rows.map(r=>cols.map(i=>r[i])) }; }
-
-    // Copy (uses chosen format; disabled for PDF)
-    document.getElementById("copyBtn").addEventListener("click", async ()=>{
-      if(!HEADERS.length || SELECTED.size<1 || EXPORT_FMT==="pdf") return;
-      const rows = Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i]);
-      const {fh,fr}=filterCols(HEADERS, rows);
-
-      let text = "";
-      if(EXPORT_FMT==="md"){ text = toMarkdown(fh,fr,""); }
-      else if(EXPORT_FMT==="csv"){ text = toCSV(fh,fr); }
-      else { const arr = toJSONArray(fh,fr); text = (arr.length===1 ? JSON.stringify(arr[0], null, 2) : JSON.stringify(arr, null, 2)); }
-
-      try{
-        await navigator.clipboard.writeText(text);
-        toast(`Copied ${EXPORT_FMT.toUpperCase()} to clipboard`);
-      }catch{
-        const name = `selection.${EXPORT_FMT}`;
-        const mime = EXPORT_FMT==="md" ? "text/markdown" : EXPORT_FMT==="csv" ? "text/csv" : "application/json";
-        download(name, text, mime);
-        toast("Clipboard blocked — downloaded instead");
-      }
     });
+    row.appendChild(label); row.appendChild(radio); panel.appendChild(row);
+  });
+  const footer=document.createElement("div"); footer.className="exportFooter";
+  const go=document.createElement("button"); go.className="iconbtn"; go.title="Export now";
+  go.innerHTML = '<svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>';
+  go.addEventListener("click", ()=>{ doExport(); panel.classList.remove("open"); });
+  footer.appendChild(go);
+  panel.appendChild(footer);
+  const note=document.createElement("div"); note.className="note";
+  note.textContent="Exports honor selection (if any), visible columns, filters, and sort.";
+  panel.appendChild(note);
+}
+(function setupExportUIOnce(){
+  const btn=document.getElementById("exportBtn"); const panel=document.getElementById("exportPanel");
+  btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
+  buildExportPanel(); updateExportUI();
+})();
+function updateExportUI(){
+  const btn=document.getElementById("exportBtn");
+  if(btn) btn.title = "Export ("+EXPORT_FMT.toUpperCase()+")";
+  updateActionButtons();
+}
 
-    function toast(msg){ const el=document.getElementById("count"); const old=el.textContent; el.textContent=msg; setTimeout(()=>{ el.textContent=old; },1200); }
+/* =================== EXPORT / COPY =================== */
+function visibleCols(){ const idxs=[]; COL_VISIBLE.forEach((v,i)=>{ if(v!==false) idxs.push(i); }); return idxs; }
+function filterCols(headers,rows){ const cols=visibleCols(); return { fh: cols.map(i=>headers[i]), fr: rows.map(r=>cols.map(i=>r[i])) }; }
+function toMarkdown(headers,rows,title){
+  const esc=v=>(v==null?"":String(v).replace(/\|/g,"\\|"));
+  const head="| "+headers.map(esc).join(" | ")+" |";
+  const sep ="| "+headers.map(()=> "---").join(" | ")+" |";
+  const body=rows.map(r=>"| "+r.map(esc).join(" | ")+" |").join("\n");
+  return (title?`# ${title}\n\n`:"")+head+"\n"+sep+"\n"+body+"\n";
+}
+function toCSV(headers,rows){ function esc(v){ if(v==null)v=""; v=String(v); if(/[\",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
+  const all=[headers,...rows]; return all.map(r=>r.map(esc).join(",")).join("\r\n")+"\r\n"; }
+function toJSONArray(headers,rows){ return rows.map(r=>{ const o={}; headers.forEach((h,i)=>o[h]=r[i]??""); return o; }); }
+function download(name,text,mime){ const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+function escapeHtml(x){ return String(x).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
+function exportToPDF(headers, rows, title){
+  const style = `
+    <style>
+      body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}
+      h1{font-size:18px;margin:0 0 12px 0}
+      table{width:100%;border-collapse:collapse;table-layout:auto}
+      th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}
+      thead th{background:#f2f4f7;white-space:nowrap;}
+      td{white-space:pre-wrap;}
+      .meta{color:#555;font-size:11px;margin:8px 0 16px 0}
+      @media print{ body{margin:0;} }
+    </style>`;
+  const headRow = "<tr>"+headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")+"</tr>";
+  const bodyRows = rows.map(r=>"<tr>"+r.map(v=>`<td>${escapeHtml(v ?? "")}</td>`).join("")+"</tr>").join("");
+  const html = `
+    <!doctype html><html><head><meta charset="utf-8">${style}<title>${escapeHtml(title||"Export")}</title></head>
+    <body>
+      <h1>${escapeHtml(title||"Export")}</h1>
+      <div class="meta">Generated: ${new Date().toLocaleString()}</div>
+      <table><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table>
+      <script>window.onload=()=>{try{window.print();}catch(e){}}<\/script>
+    </body></html>`;
+  const w=window.open("", "_blank");
+  if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+function slugify(s){ return String(s||"export").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "export"; }
+function currentTitle(){ const t=(document.getElementById("pageTitle")?.textContent?.trim()) || document.title || "DAV Export"; return t; }
+function doExport(){
+  if(!HEADERS.length) return;
+  const rows = (SELECTED.size>0)
+    ? Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i])
+    : Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)")).map(tr=>ROWS[+tr.dataset.index]);
+  const {fh,fr} = filterCols(HEADERS, rows);
+  const base = slugify(currentTitle());
+  if(EXPORT_FMT==="md"){
+    const md=toMarkdown(fh,fr,currentTitle()); download(`${base}.md`, md, "text/markdown");
+  } else if(EXPORT_FMT==="csv"){
+    const csv=toCSV(fh,fr); download(`${base}.csv`, csv, "text/csv");
+  } else if(EXPORT_FMT==="json"){
+    const json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n"; download(`${base}.json`, json, "application/json");
+  } else if(EXPORT_FMT==="pdf"){
+    exportToPDF(fh, fr, currentTitle());
+  }
+}
+document.getElementById("copyBtn").addEventListener("click", async ()=>{
+  if(!HEADERS.length || SELECTED.size<1 || EXPORT_FMT==="pdf") return;
+  const rows = Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i]);
+  const {fh,fr}=filterCols(HEADERS, rows);
+  let text = "";
+  if(EXPORT_FMT==="md"){ text = toMarkdown(fh,fr,""); }
+  else if(EXPORT_FMT==="csv"){ text = toCSV(fh,fr); }
+  else { const arr = toJSONArray(fh,fr); text = (arr.length===1 ? JSON.stringify(arr[0], null, 2) : JSON.stringify(arr, null, 2)); }
+  try{ await navigator.clipboard.writeText(text); toast(`Copied ${EXPORT_FMT.toUpperCase()} to clipboard`); }
+  catch{ const name = `selection.${EXPORT_FMT}`; const mime = EXPORT_FMT==="md" ? "text/markdown" : EXPORT_FMT==="csv" ? "text/csv" : "application/json"; download(name, text, mime); toast("Clipboard blocked — downloaded instead"); }
+});
+function toast(msg){ const el=document.getElementById("count"); const old=el.textContent; el.textContent=msg; setTimeout(()=>{ el.textContent=old; },1200); }
 
-    // ====== Add / Edit modal ======
-    const addModal = ()=>document.getElementById("addModal");
-    const addGrid  = ()=>document.getElementById("addGrid");
-    const addMsg   = ()=>document.getElementById("addMsg");
+/* =================== ADD/EDIT MODAL =================== */
+const addModal = ()=>document.getElementById("addModal");
+const addGrid  = ()=>document.getElementById("addGrid");
+const addMsg   = ()=>document.getElementById("addMsg");
 
-    function openForm(isEdit=false){
-      if(!HEADERS.length){ alert("Data not loaded yet."); return; }
-      if(!CAN_WRITE){ alert("Editing disabled by configuration."); return; }
-      document.getElementById("formTitle").textContent = isEdit ? "Edit Row" : "Add Row";
-      const grid=addGrid(); grid.innerHTML="";
-      HEADERS.forEach((h,i)=>{ const lab=document.createElement("label"); lab.setAttribute("for","col_"+i); lab.textContent=h||("Column "+(i+1));
-        const inp=document.createElement("input"); inp.type="text"; inp.id="col_"+i; grid.appendChild(lab); grid.appendChild(inp); });
-      if(isEdit && SELECTED.size===1){
-        const idx=[...SELECTED][0]; HEADERS.forEach((_,i)=>{ const el=document.getElementById("col_"+i); if(el) el.value=ROWS[idx][i]??""; });
-        EDIT_INDEX = idx;
-      } else { EDIT_INDEX = -1; }
-      setStatus("", null); addModal().classList.add("open"); addModal().setAttribute("aria-hidden","false");
+function openForm(isEdit=false){
+  if(!HEADERS.length){ alert("Data not loaded yet."); return; }
+  if(!CAN_WRITE()){ alert("Editing disabled by configuration."); return; }
+  document.getElementById("formTitle").textContent = isEdit ? "Edit Row" : "Add Row";
+  const grid=addGrid(); grid.innerHTML="";
+  HEADERS.forEach((h,i)=>{ const lab=document.createElement("label"); lab.setAttribute("for","col_"+i); lab.textContent=h||("Column "+(i+1));
+    const inp=document.createElement("input"); inp.type="text"; inp.id="col_"+i; grid.appendChild(lab); grid.appendChild(inp); });
+  if(isEdit && SELECTED.size===1){
+    const idx=[...SELECTED][0]; HEADERS.forEach((_,i)=>{ const el=document.getElementById("col_"+i); if(el) el.value=ROWS[idx][i]??""; });
+    EDIT_INDEX = idx;
+  } else { EDIT_INDEX = -1; }
+  setStatus("", null); addModal().classList.add("open"); addModal().setAttribute("aria-hidden","false");
+}
+function closeForm(){ addModal().classList.remove("open"); addModal().setAttribute("aria-hidden","true"); EDIT_INDEX=-1; }
+function setStatus(t,ok){ const el=addMsg(); el.textContent=t||""; el.classList.toggle("ok", ok===true); el.classList.toggle("err", ok===false); }
+
+document.getElementById("addBtn").addEventListener("click",()=>openForm(false));
+document.getElementById("editBtn").addEventListener("click",()=>{ if(SELECTED.size!==1){ alert("Select exactly one row to edit."); return; } openForm(true); });
+document.getElementById("addClose").addEventListener("click",closeForm);
+
+document.getElementById("addSave").addEventListener("click", async (e)=>{
+  e.preventDefault();
+  if(!CAN_WRITE()){ alert("Editing disabled by configuration."); return; }
+  const values = HEADERS.map((_,i)=>{ const el=document.getElementById("col_"+i); return el?el.value.trim():""; });
+
+  let path, content, message, isEdit=(EDIT_INDEX>=0);
+  if(VIEW_MODE==="json"){
+    const obj={}; HEADERS.forEach((h,i)=>obj[h]=values[i]??"");
+    const firstCol = values[0] || "row";
+    const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+    if(isEdit){ path = FILES[EDIT_INDEX].path; content = JSON.stringify(obj,null,2)+"\n"; message=`Edit JSON row: ${firstCol}`; }
+    else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.json`; content=JSON.stringify(obj,null,2)+"\n"; message=`Add JSON row: ${firstCol}`; }
+  } else {
+    const md = toMarkdown(HEADERS, [values], "");
+    const firstCol = values[0] || "row";
+    const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+    if(isEdit){ path = FILES[EDIT_INDEX].path; content = md; message=`Edit MD row: ${firstCol}`; }
+    else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.md`; content=md; message=`Add MD row: ${firstCol}`; }
+  }
+  try{
+    setStatus(isEdit?"Saving…":"Adding…");
+    let resp;
+    if(isEdit){
+      const sha = FILES[EDIT_INDEX].sha;
+      resp = await updateFileInRepo(path, content, message, sha);
+      const newSha = resp && resp.content && resp.content.sha ? resp.content.sha : null;
+      if(newSha) FILES[EDIT_INDEX].sha = newSha;
+      ROWS[EDIT_INDEX] = values;
+    } else {
+      resp = await createFileInRepo(path, content, message);
+      const info = resp && resp.content ? resp.content : {};
+      FILES.push({path: info.path || path, sha: info.sha || null, name: info.name || path.split("/").pop(), url: info.download_url || ghRawUrl(path)});
+      ROWS.push(values);
     }
-    function closeForm(){ addModal().classList.remove("open"); addModal().setAttribute("aria-hidden","true"); EDIT_INDEX=-1; }
-    function setStatus(t,ok){ const el=addMsg(); el.textContent=t||""; el.classList.toggle("ok", ok===true); el.classList.toggle("err", ok===false); }
+    renderTable(HEADERS, ROWS);
+    setStatus("Saved", true); setTimeout(closeForm, 350);
+  }catch(err){
+    console.warn("Write failed:", err);
+    const fname = (path||"row."+ (VIEW_MODE==="json"?"json":"md")).split("/").pop();
+    const mime = VIEW_MODE==="json" ? "application/json" : "text/markdown";
+    const blob=new Blob([content||""],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
+    setStatus("Downloaded (add to repo manually)", true);
+  }
+});
 
-    document.getElementById("addBtn").addEventListener("click",()=>openForm(false));
-    document.getElementById("editBtn").addEventListener("click",()=>{ if(SELECTED.size!==1){ alert("Select exactly one row to edit."); return; } openForm(true); });
-    document.getElementById("addClose").addEventListener("click",closeForm);
+/* =================== LOADERS (recursive) =================== */
+async function loadMd(){
+  const countEl=document.getElementById("count");
+  ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
+  countEl.textContent=`Probing GitHub (branch ${ACTIVE_BRANCH})…`;
 
-    document.getElementById("addSave").addEventListener("click", async (e)=>{
-      e.preventDefault();
-      if(!CAN_WRITE){ alert("Editing disabled by configuration."); return; }
-      const values = HEADERS.map((_,i)=>{ const el=document.getElementById("col_"+i); return el?el.value.trim():""; });
+  let list=[];
+  if(SRC.type==="github"){
+    const items = await ghListAll(SRC.dataDir || "");
+    list = items.filter(it=>it.type==="file" && /\.md$/i.test(it.name))
+                .sort((a,b)=>a.path.localeCompare(b.path))
+                .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
+  } else if(SRC.type==="list"){
+    (SRC.urls||[]).forEach(u=>{ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
+  }
 
-      let path, content, message, isEdit=(EDIT_INDEX>=0);
-      if(VIEW_MODE==="json"){
-        const obj={}; HEADERS.forEach((h,i)=>obj[h]=values[i]??"");
-        const firstCol = values[0] || "row";
-        const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-        if(isEdit){ path = FILES[EDIT_INDEX].path; content = JSON.stringify(obj,null,2)+"\n"; message=`Edit JSON row: ${firstCol}`; }
-        else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.json`; content=JSON.stringify(obj,null,2)+"\n"; message=`Add JSON row: ${firstCol}`; }
-      } else {
-        const md = toMarkdown(HEADERS, [values], "");
-        const firstCol = values[0] || "row";
-        const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-        if(isEdit){ path = FILES[EDIT_INDEX].path; content = md; message=`Edit MD row: ${firstCol}`; }
-        else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.md`; content=md; message=`Add MD row: ${firstCol}`; }
-      }
-      try{
-        setStatus(isEdit?"Saving…":"Adding…");
-        let resp;
-        if(isEdit){
-          const sha = FILES[EDIT_INDEX].sha;
-          resp = await updateFileInRepo(path, content, message, sha);
-          const newSha = resp && resp.content && resp.content.sha ? resp.content.sha : null;
-          if(newSha) FILES[EDIT_INDEX].sha = newSha;
-          ROWS[EDIT_INDEX] = values;
-        } else {
-          resp = await createFileInRepo(path, content, message);
-          const info = resp && resp.content ? resp.content : {};
-          FILES.push({path: info.path || path, sha: info.sha || null, name: info.name || path.split("/").pop(), url: info.download_url || ghRawUrl(path)});
-          ROWS.push(values);
-        }
-        renderTable(HEADERS, ROWS);
-        setStatus("Saved", true); setTimeout(closeForm, 350);
-      }catch(err){
-        console.warn("Write failed:", err);
-        const fname = (path||"row."+ (VIEW_MODE==="json"?"json":"md")).split("/").pop();
-        const mime = VIEW_MODE==="json" ? "application/json" : "text/markdown";
-        const blob=new Blob([content||""],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
-        setStatus("Downloaded (add to repo manually)", true);
-      }
-    });
-
-    // ====== Loaders (MD / JSON) with recursive scanning ======
-    async function loadMd(){
-      const countEl=document.getElementById("count");
-      ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
-      countEl.textContent="Loading…";
-
-      let list=[];
-      if(SRC.type==="github"){
-        const items = await ghListAll(SRC.dataDir || "");
-        list = items.filter(it=>it.type==="file" && /\.md$/i.test(it.name))
-                    .sort((a,b)=>a.path.localeCompare(b.path))
-                    .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
-      } else if(SRC.type==="list"){
-        (SRC.urls||[]).forEach(u=>{ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
-      }
-
-      for(let i=0;i<list.length;i++){
-        const {name,url,path,sha}=list[i];
-        try{
-          const text=await fetchText(url);
-          const parsed=parseFirstTable(text); if(!parsed) continue;
-          if(HEADERS.length===0){
-            HEADERS=parsed.headers.length?parsed.headers:[];
-            if(HEADERS.length===0 && parsed.rows[0]) HEADERS = parsed.rows[0].map((_,k)=>"Column "+(k+1));
-            COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null);
-          }
-          if(parsed.rows && parsed.rows.length){
-            const row=parsed.rows[0];
-            const vals = HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??""));
-            ROWS.push(vals);
-            FILES.push({name,url,path,sha});
-          }
-          countEl.textContent=`Loading… ${i+1}/${list.length}`;
-        }catch(e){ console.warn("Skip MD",name,e); }
-      }
+  for(let i=0;i<list.length;i++){
+    const {name,url,path,sha}=list[i];
+    try{
+      const text=await fetchText(url);
+      const parsed=parseFirstTable(text); if(!parsed) continue;
       if(HEADERS.length===0){
-        const tbl=document.getElementById("sheet");
-        tbl.innerHTML=`<thead><tr><th>No MD data found in <code>${SRC.dataDir || "(repo root)"}</code> (recursive)</th></tr></thead>`;
-        return;
+        HEADERS=parsed.headers.length?parsed.headers:[]; 
+        if(HEADERS.length===0 && parsed.rows[0]) HEADERS = parsed.rows[0].map((_,k)=>"Column "+(k+1));
+        COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null);
       }
-      renderTable(HEADERS, ROWS);
-    }
-
-    async function loadJson(){
-      const countEl=document.getElementById("count");
-      ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
-      countEl.textContent="Loading…";
-
-      let list=[];
-      if(SRC.type==="github"){
-        const items = await ghListAll(SRC.dataDir || "");
-        list = items.filter(it=>it.type==="file" && /\.json$/i.test(it.name))
-                    .sort((a,b)=>a.path.localeCompare(b.path))
-                    .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
-      } else if(SRC.type==="list"){
-        (SRC.urls||[]).forEach(u=>{ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
+      if(parsed.rows && parsed.rows.length){
+        const row=parsed.rows[0];
+        const vals = HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??""));
+        ROWS.push(vals);
+        FILES.push({name,url,path,sha});
       }
+      countEl.textContent=`Loaded ${i+1}/${list.length} (MD)`;
+    }catch(e){ console.warn("Skip MD",name,e); }
+  }
+  if(HEADERS.length===0){
+    const tbl=document.getElementById("sheet");
+    const where = SRC.dataDir ? SRC.dataDir : "(repo root)";
+    tbl.innerHTML=`<thead><tr><th>No MD data found in <code>${where}</code> (recursive, branch ${ACTIVE_BRANCH}).</th></tr></thead>`;
+    return;
+  }
+  renderTable(HEADERS, ROWS);
+}
 
-      for(let i=0;i<list.length;i++){
-        const {name,url,path,sha}=list[i];
-        try{
-          const text=await fetchText(url);
-          const obj=JSON.parse(text);
-          const flat=flattenJson(obj);
-          const vals=rowFromFlatGrowHeaders(flat);
-          ROWS.push(vals); FILES.push({name,url,path,sha});
-          countEl.textContent=`Loading… ${i+1}/${list.length}`;
-        }catch(e){ console.warn("Skip JSON",name,e); }
-      }
-      if(HEADERS.length===0){
-        const tbl=document.getElementById("sheet");
-        tbl.innerHTML=`<thead><tr><th>No JSON data found in <code>${SRC.dataDir || "(repo root)"}</code> (recursive)</th></tr></thead>`;
-        return;
-      }
-      renderTable(HEADERS, ROWS);
-    }
+async function loadJson(){
+  const countEl=document.getElementById("count");
+  ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
+  countEl.textContent=`Probing GitHub (branch ${ACTIVE_BRANCH})…`;
 
-    // ====== Mode switch ======
-    function applyModeUI(){
-      const mdBtn=document.getElementById("modeMd");
-      const jsBtn=document.getElementById("modeJson");
-      if(VIEW_MODE==="json"){ mdBtn.classList.remove("active"); mdBtn.setAttribute("aria-selected","false"); jsBtn.classList.add("active"); jsBtn.setAttribute("aria-selected","true"); }
-      else { jsBtn.classList.remove("active"); jsBtn.setAttribute("aria-selected","false"); mdBtn.classList.add("active"); mdBtn.setAttribute("aria-selected","true"); }
-    }
-    document.getElementById("modeMd").addEventListener("click",()=>{ VIEW_MODE="md"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
-    document.getElementById("modeJson").addEventListener("click",()=>{ VIEW_MODE="json"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
+  let list=[];
+  if(SRC.type==="github"){
+    const items = await ghListAll(SRC.dataDir || "");
+    list = items.filter(it=>it.type==="file" && /\.json$/i.test(it.name))
+                .sort((a,b)=>a.path.localeCompare(b.path))
+                .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
+  } else if(SRC.type==="list"){
+    (SRC.urls||[]).forEach(u=>{ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
+  }
 
-    async function reloadAll(){
-      applyModeUI();
-      const tbl=document.getElementById("sheet"); tbl.innerHTML="<thead><tr><th>Loading…</th></tr></thead>";
-      try{ if(VIEW_MODE==="json") await loadJson(); else await loadMd(); }catch(err){
-        tbl.innerHTML="<thead><tr><th>Error</th></tr></thead><tbody><tr><td>"+(err&&err.message?err.message:err)+"</td></tr></tbody>";
-        console.error(err);
-      }
-    }
+  for(let i=0;i<list.length;i++){
+    const {name,url,path,sha}=list[i];
+    try{
+      const text=await fetchText(url);
+      const obj=JSON.parse(text);
+      const flat=flattenJson(obj);
+      const vals=rowFromFlatGrowHeaders(flat);
+      ROWS.push(vals); FILES.push({name,url,path,sha});
+      countEl.textContent=`Loaded ${i+1}/${list.length} (JSON)`;
+    }catch(e){ console.warn("Skip JSON",name,e); }
+  }
+  if(HEADERS.length===0){
+    const tbl=document.getElementById("sheet");
+    const where = SRC.dataDir ? SRC.dataDir : "(repo root)";
+    tbl.innerHTML=`<thead><tr><th>No JSON data found in <code>${where}</code> (recursive, branch ${ACTIVE_BRANCH}).</th></tr></thead>`;
+    return;
+  }
+  renderTable(HEADERS, ROWS);
+}
 
-    // ====== Attribute Panel ======
-    function pickRowIndexForSide(){
-      if(HOVER_INDEX>=0) return HOVER_INDEX;
-      if(SELECTED.size>=1) return [...SELECTED][0];
-      return -1;
-    }
-    function updateAttributePanel(){
-      const cont = document.getElementById("attrContainer");
-      cont.innerHTML="";
-      const idx = pickRowIndexForSide();
-      if(idx<0){ cont.innerHTML="<div class='section'><em>Hover or select a row…</em></div>"; return; }
+/* =================== MODE / BOOT =================== */
+function applyModeUI(){
+  const mdBtn=document.getElementById("modeMd");
+  const jsBtn=document.getElementById("modeJson");
+  if(VIEW_MODE==="json"){ mdBtn.classList.remove("active"); mdBtn.setAttribute("aria-selected","false"); jsBtn.classList.add("active"); jsBtn.setAttribute("aria-selected","true"); }
+  else { jsBtn.classList.remove("active"); jsBtn.setAttribute("aria-selected","false"); mdBtn.classList.add("active"); mdBtn.setAttribute("aria-selected","true"); }
+}
+document.getElementById("modeMd").addEventListener("click",()=>{ VIEW_MODE="md"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
+document.getElementById("modeJson").addEventListener("click",()=>{ VIEW_MODE="json"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
 
-      const indices = sideColsIndices();
-      if(indices.length===0){ cont.innerHTML="<div class='section'><em>No fields selected for the Attribute Panel.</em></div>"; return; }
+async function reloadAll(){
+  applyModeUI();
+  const tbl=document.getElementById("sheet"); tbl.innerHTML="<thead><tr><th>Loading…</th></tr></thead>";
+  // Quick diag: show what we're about to query
+  const count=document.getElementById("count");
+  const diag = (SRC.type==="github")
+    ? `owner=${SRC.owner} repo=${SRC.repo} dir=${SRC.dataDir||"(root)"} branch=${ACTIVE_BRANCH}`
+    : `list (${(SRC.urls||[]).length} urls)`;
+  count.textContent = `Loading (${diag})…`;
+  try{
+    if(VIEW_MODE==="json") await loadJson(); else await loadMd();
+  }catch(err){
+    tbl.innerHTML=`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>${(err&&err.message?escapeHtml(err.message):escapeHtml(String(err)))}</td></tr></tbody>`;
+    console.error(err);
+  }
+}
 
-      indices.forEach(i=>{
-        const title = HEADERS[i];
-        const rawText = ROWS[idx][i] || "";
-        const cleaned = cleanBulletLines(rawText||"");
-        let lines = String(cleaned).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-        lines = lines.map(l => l.replace(/^\d+[.)]\s+/, "")); // avoid double numbering
+/* =================== INIT =================== */
+(async function init(){
+  await resolveConfig();
+  // If you KNOW everything is in the same folder as index.html/config.js,
+  // you can set dataDir explicitly to that folder name (relative to repo root).
+  // Auto-detect already did this if possible.
+  if (!SRC || !SRC.type){
+    const t=document.getElementById("sheet");
+    t.innerHTML = "<thead><tr><th>Missing configuration and auto-detect failed.</th></tr></thead>";
+    return;
+  }
+  // Start mode from config if provided
+  const start = (CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md";
+  VIEW_MODE = localStorage.getItem("viewMode") || start;
 
-        const sec = document.createElement("div"); sec.className="section";
-        const strong = document.createElement("strong"); strong.textContent = title; sec.appendChild(strong);
-
-        const ol = document.createElement("ol"); ol.className="attrlist";
-        if(lines.length===0){ const li=document.createElement("li"); li.textContent="(none)"; ol.appendChild(li); }
-        else{ lines.forEach(line=>{ const li=document.createElement("li"); li.textContent=line; ol.appendChild(li); }); }
-        sec.appendChild(ol);
-        cont.appendChild(sec);
-      });
-    }
-
-    // ====== Resizable side panel + visibility toggle ======
-    (function setupSide(){
-      const gutter=document.getElementById("gutter");
-      const root=document.documentElement;
-      const mainbar=document.querySelector(".mainbar");
-      const savedW=localStorage.getItem("dav:sideWidth"); if(savedW){ root.style.setProperty("--side-width", savedW); }
-      const savedVis=localStorage.getItem(SIDE_VISIBLE_KEY);
-      setSideVisible(savedVis!== "0"); // default visible
-
-      let dragging=false, startX=0, startW=0;
-      gutter.addEventListener("mousedown",(e)=>{ dragging=true; startX=e.clientX; startW=parseInt(getComputedStyle(root).getPropertyValue("--side-width"))||380; document.body.style.cursor="col-resize"; e.preventDefault(); });
-      window.addEventListener("mousemove",(e)=>{ if(!dragging) return; const dx = startX - e.clientX; let w = Math.min(Math.max(startW + dx, 260), window.innerWidth*0.7); root.style.setProperty("--side-width", w+"px"); });
-      window.addEventListener("mouseup",()=>{ if(!dragging) return; dragging=false; document.body.style.cursor=""; localStorage.setItem("dav:sideWidth", getComputedStyle(root).getPropertyValue("--side-width").trim()); });
-
-      document.getElementById("toggleSideBtn").addEventListener("click", ()=>{
-        const hidden = mainbar.classList.contains("side-hidden");
-        setSideVisible(hidden); // if hidden, show; else hide
-      });
-
-      function setSideVisible(on){
-        const btn=document.getElementById("toggleSideBtn");
-        if(on){ mainbar.classList.remove("side-hidden"); btn.setAttribute("aria-pressed","true"); }
-        else { mainbar.classList.add("side-hidden"); btn.setAttribute("aria-pressed","false"); }
-        localStorage.setItem(SIDE_VISIBLE_KEY, on?"1":"0");
-      }
-      window.setSideVisible = setSideVisible;
-    })();
-
-    // ====== Boot ======
-    reloadAll();
-  </script>
+  reloadAll();
+})();
+</script>
 </body>
 </html>
