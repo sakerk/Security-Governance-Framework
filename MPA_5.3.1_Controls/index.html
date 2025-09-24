@@ -142,7 +142,7 @@
       </div>
 
       <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
-        <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
+        <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
       </button>
       <button id="editBtn" class="iconbtn" title="Edit selected row" aria-label="Edit selected row" disabled>
         <svg class="icon" viewBox="0 0 16 16"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
@@ -211,7 +211,6 @@ let SRC = {};
 let ACTIVE_BRANCH = "main";
 
 function autoDetectFromLocation(){
-  // https://<owner>.github.io/<repo>/<dir...>/
   const host = location.hostname;
   const owner = host.endsWith(".github.io") ? host.replace(".github.io","") : "";
   const parts = location.pathname.replace(/\/index\.html$/,"").replace(/\/$/,"").split("/").filter(Boolean);
@@ -220,7 +219,7 @@ function autoDetectFromLocation(){
   if(owner && repo){
     return {
       title: document.title || "DAV",
-      source: { type:"github", owner, repo, branch:"main", dataDir },
+      source: { type:"github", owner: owner, repo: repo, branch:"main", dataDir: dataDir },
       permissions: { write:false },
       ui: { startMode: "md" }
     };
@@ -238,19 +237,19 @@ function resolveConfigSync(){
   SRC = CFG.source || {};
   ACTIVE_BRANCH = SRC.branch || "main";
   document.title = CFG.title || "DAV";
-  const t = document.getElementById("pageTitle"); if(t) t.textContent = CFG.title || "DAV";
+  var t = document.getElementById("pageTitle"); if(t) t.textContent = CFG.title || "DAV";
 }
 
 /* --------------------- State --------------------- */
 let GH_TOKEN  = localStorage.getItem("ghToken") || "";
 let VIEW_MODE = localStorage.getItem("viewMode") || ((CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md");
 let EXPORT_FMT = localStorage.getItem("dav:exportFmt") || "md";
-const CAN_WRITE = ()=> !!(CFG.permissions && CFG.permissions.write && SRC.type==="github");
+const CAN_WRITE = function(){ return !!(CFG.permissions && CFG.permissions.write && SRC.type==="github"); };
 
-const VIS_KEY        = (mode)=>`dav:colVisible:${mode}`;
-const WIDTH_KEY      = (mode)=>`dav:colWidths:${mode}`;
+const VIS_KEY        = function(mode){ return "dav:colVisible:"+mode; };
+const WIDTH_KEY      = function(mode){ return "dav:colWidths:"+mode; };
 const SIDE_VISIBLE_KEY = "dav:sideVisible";
-const SIDE_COLS_KEY_FN  = (mode)=>`dav:sideCols:${mode}`;
+const SIDE_COLS_KEY_FN  = function(mode){ return "dav:sideCols:"+mode; };
 
 let HEADERS=[], ROWS=[], FILES=[];
 const SELECTED = new Set();
@@ -263,15 +262,16 @@ let HOVER_INDEX = -1;
 let SIDE_COLS = [];
 
 /* --------------------- GitHub helpers --------------------- */
-const ghContentsUrl = (dir)=>`https://api.github.com/repos/${encodeURIComponent(SRC.owner)}/${encodeURIComponent(SRC.repo)}/contents/${encodeURIComponent(dir||"")}?ref=${encodeURIComponent(ACTIVE_BRANCH)}`;
-const ghRawUrl = (path)=>`https://raw.githubusercontent.com/${SRC.owner}/${SRC.repo}/${ACTIVE_BRANCH}/${path}`;
+const ghContentsUrl = function(dir){
+  return "https://api.github.com/repos/"+encodeURIComponent(SRC.owner)+"/"+encodeURIComponent(SRC.repo)+"/contents/"+encodeURIComponent(dir||"")+"?ref="+encodeURIComponent(ACTIVE_BRANCH);
+};
+const ghRawUrl = function(path){ return "https://raw.githubusercontent.com/"+SRC.owner+"/"+SRC.repo+"/"+ACTIVE_BRANCH+"/"+path; };
 
 async function ghList(dir){
   const url = ghContentsUrl(dir);
   let res = await fetch(url);
   if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
   if(!res.ok){
-    // Fallback main<->master once
     if ((ACTIVE_BRANCH==="main" || ACTIVE_BRANCH==="master")){
       const alt = ACTIVE_BRANCH==="main" ? "master" : "main";
       const altUrl = url.replace(/ref=[^&]+/, "ref="+encodeURIComponent(alt));
@@ -279,7 +279,7 @@ async function ghList(dir){
       if(!res2.ok && GH_TOKEN){ res2 = await fetch(altUrl, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
       if(res2.ok){ ACTIVE_BRANCH = alt; console.warn("Branch fallback to", ACTIVE_BRANCH); return res2.json(); }
     }
-    throw new Error(`GitHub list error ${res.status} at ${url}`);
+    throw new Error("GitHub list error "+res.status+" at "+url);
   }
   return res.json();
 }
@@ -288,7 +288,10 @@ async function ghListAll(dir){
   const out = [];
   for (const it of entries) {
     if (it.type === "file") out.push(it);
-    else if (it.type === "dir") out.push(...await ghListAll(it.path));
+    else if (it.type === "dir") {
+      const deeper = await ghListAll(it.path);
+      for (var k=0;k<deeper.length;k++) out.push(deeper[k]);
+    }
   }
   return out;
 }
@@ -298,7 +301,7 @@ async function fetchText(url){
   if(!res.ok) throw new Error("Fetch error "+res.status+" for "+url);
   return res.text();
 }
-const b64 = (s)=>btoa(unescape(encodeURIComponent(s)));
+const b64 = function(s){ return btoa(unescape(encodeURIComponent(s))); };
 
 /* --------------------- Write helpers --------------------- */
 async function createFileInRepo(path, content, message){
@@ -308,10 +311,10 @@ async function createFileInRepo(path, content, message){
     if(!tok) throw new Error("Write cancelled (no token)");
     GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
   }
-  const url = `https://api.github.com/repos/${SRC.owner}/${SRC.repo}/contents/${encodeURIComponent(path)}`;
+  const url = "https://api.github.com/repos/"+SRC.owner+"/"+SRC.repo+"/contents/"+encodeURIComponent(path);
   const body = { message: message||("Add "+path), content: b64(content), branch: ACTIVE_BRANCH };
   const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
-  if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
+  if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch(e){}; throw new Error(msg); }
   return res.json();
 }
 async function updateFileInRepo(path, content, message, sha){
@@ -321,16 +324,16 @@ async function updateFileInRepo(path, content, message, sha){
     if(!tok) throw new Error("Write cancelled (no token)");
     GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
   }
-  const url = `https://api.github.com/repos/${SRC.owner}/${SRC.repo}/contents/${encodeURIComponent(path)}`;
-  const body = { message: message||("Edit "+path), content: b64(content), sha, branch: ACTIVE_BRANCH };
+  const url = "https://api.github.com/repos/"+SRC.owner+"/"+SRC.repo+"/contents/"+encodeURIComponent(path);
+  const body = { message: message||("Edit "+path), content: b64(content), sha: sha, branch: ACTIVE_BRANCH };
   const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
-  if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
+  if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch(e){}; throw new Error(msg); }
   return res.json();
 }
 
 /* --------------------- Parsing & cleanup --------------------- */
 function splitCells(line){
-  let s=line.trim(); s=s.replace(/^\|/,"").replace(/\|$/,"");
+  var s=line.trim(); s=s.replace(/^\|/,"").replace(/\|$/,"");
   const parts=[]; let cur="", esc=false;
   for(let i=0;i<s.length;i++){
     const ch=s[i];
@@ -352,12 +355,12 @@ function parseFirstTable(md){
         const cells=splitCells(ln); if(cells.every(c=>c.trim()==="")) continue;
         rows.push(cells);
       }
-      return {headers,rows};
+      return { headers: headers, rows: rows };
     }
   }
   return null;
 }
-const isObj = (v)=>v && typeof v==='object' && !Array.isArray(v);
+const isObj = function(v){ return v && typeof v==='object' && !Array.isArray(v); };
 function cleanBulletLines(text){
   if(text==null) return "";
   let raw = String(text);
@@ -366,72 +369,80 @@ function cleanBulletLines(text){
     .replace(/<\/?[^>]+>/g, "")
     .replace(/&nbsp;/gi, " ")
     .replace(/\r/g, "");
-  const lines = raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  const lines = raw.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
   if(lines.length<=1) return raw.trim();
-  const cleaned = lines.map(l=>l
-    .replace(/^[-*•–—]\s+/,"")
-    .replace(/^\d+[\.\)]\s+/,"")
-    .replace(/^\(\d+\)\s+/,"")
-    .replace(/^- \[[ xX]\]\s+/,"")
-  );
-  return cleaned.map((l,i)=>`${i+1}. ${l}`).join("\n");
+  const cleaned = lines.map(function(l){
+    return l
+      .replace(/^[-*•–—]\s+/,"")
+      .replace(/^\d+[\.\)]\s+/,"")
+      .replace(/^\(\d+\)\s+/,"")
+      .replace(/^- \[[ xX]\]\s+/,"");
+  });
+  return cleaned.map(function(l,i){ return (i+1)+". "+l; }).join("\n");
 }
 function flattenJson(obj){
   const out={};
-  for(const [k,v] of Object.entries(obj||{})){
+  Object.keys(obj||{}).forEach(function(k){
+    const v = obj[k];
     if(isObj(v)){
-      for(const [k2,v2] of Object.entries(v)){
-        out[`${k}.${k2}`]=cleanBulletLines(isObj(v2)?JSON.stringify(v2):Array.isArray(v2)?v2.join("\n"):v2);
-      }
-    } else if(Array.isArray(v)){ out[k]=cleanBulletLines(v.join("\n"));
-    } else { out[k]=cleanBulletLines(v); }
-  }
+      Object.keys(v).forEach(function(k2){
+        const v2 = v[k2];
+        out[k+"."+k2] = isObj(v2) ? JSON.stringify(v2) : Array.isArray(v2) ? cleanBulletLines(v2.join("\n")) : cleanBulletLines(v2);
+      });
+    } else if(Array.isArray(v)){
+      out[k] = cleanBulletLines(v.join("\n"));
+    } else {
+      out[k] = cleanBulletLines(v);
+    }
+  });
   return out;
 }
 function rowFromFlatGrowHeaders(flat){
   if(HEADERS.length===0){
     HEADERS = Object.keys(flat);
-    COL_VISIBLE = HEADERS.map(()=>true);
-    COL_WIDTHS  = HEADERS.map(()=>null);
-    return HEADERS.map(h=>flat[h]??"");
+    COL_VISIBLE = HEADERS.map(function(){ return true; });
+    COL_WIDTHS  = HEADERS.map(function(){ return null; });
+    return HEADERS.map(function(h){ return flat[h]??""; });
   }
   const oldHeaders = HEADERS.slice();
-  for(const k of Object.keys(flat)){ if(!HEADERS.includes(k)) HEADERS.push(k); }
+  Object.keys(flat).forEach(function(k){ if(HEADERS.indexOf(k)===-1) HEADERS.push(k); });
   if(HEADERS.length !== oldHeaders.length){
-    ROWS = ROWS.map(r=>{
-      const map={}; oldHeaders.forEach((h,i)=>map[h]=r[i]??"");
-      return HEADERS.map(h=>map[h]??"");
+    ROWS = ROWS.map(function(r){
+      const map={};
+      oldHeaders.forEach(function(h,i){ map[h]=r[i]??""; });
+      return HEADERS.map(function(h){ return map[h]??""; });
     });
     while(COL_VISIBLE.length < HEADERS.length) COL_VISIBLE.push(true);
     while(COL_WIDTHS.length  < HEADERS.length) COL_WIDTHS.push(null);
   }
-  return HEADERS.map(h=>flat[h]??"");
+  return HEADERS.map(function(h){ return flat[h]??""; });
 }
 function hideDefaultsIfFresh(){
   const saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
   if(saved) return;
-  COL_VISIBLE = HEADERS.map(()=>true);
+  COL_VISIBLE = HEADERS.map(function(){ return true; });
 }
 
 /* --------------------- Attribute Panel --------------------- */
 function restoreSideCols(){
   const saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
   if(saved){
-    try{ const arr = JSON.parse(saved); if(Array.isArray(arr)) { SIDE_COLS = arr.filter(h=>HEADERS.includes(h)); return; } }catch{}
+    try{
+      const arr = JSON.parse(saved);
+      if(Array.isArray(arr)) { SIDE_COLS = arr.filter(function(h){ return HEADERS.indexOf(h)!==-1; }); return; }
+    }catch(e){}
   }
   SIDE_COLS = [];
 }
-function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch{} }
-function sideColsIndices(){ return SIDE_COLS.map(name => HEADERS.indexOf(name)).filter(i => i>=0); }
+function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch(e){} }
+function sideColsIndices(){ return SIDE_COLS.map(function(name){ return HEADERS.indexOf(name); }).filter(function(i){ return i>=0; }); }
 
-/* NEW: actually render the side (Attribute) panel */
 function updateAttributePanel(){
   const container = document.getElementById("attrContainer");
   if(!container) return;
   container.innerHTML = "";
 
-  // Choose which row to show: hovered > single-selected > nothing
-  const idx = (HOVER_INDEX >= 0) ? HOVER_INDEX : (SELECTED.size === 1 ? [...SELECTED][0] : -1);
+  const idx = (HOVER_INDEX >= 0) ? HOVER_INDEX : (SELECTED.size === 1 ? Array.from(SELECTED)[0] : -1);
   if(idx < 0 || !ROWS[idx]){
     const msg = document.createElement("div");
     msg.className = "section";
@@ -440,10 +451,9 @@ function updateAttributePanel(){
     return;
   }
 
-  // Which columns to show in the panel
   const fields = SIDE_COLS.length ? SIDE_COLS : HEADERS.slice(0, Math.min(HEADERS.length, 6));
 
-  fields.forEach((name)=>{
+  fields.forEach(function(name){
     const ci = HEADERS.indexOf(name);
     if(ci < 0) return;
     const raw = ROWS[idx][ci] ?? "";
@@ -457,12 +467,11 @@ function updateAttributePanel(){
     title.textContent = name;
     sec.appendChild(title);
 
-    // Render multiline as numbered list; strip any leading numbers/bullets
-    const lines = String(raw).split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    const lines = String(raw).split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
     if(lines.length > 1){
       const ol = document.createElement("ol");
       ol.className = "attrlist";
-      lines.forEach(line=>{
+      lines.forEach(function(line){
         const clean = line
           .replace(/^[-*•–—]\s+/,"")
           .replace(/^\d+[\.\)]\s+/,"")
@@ -494,23 +503,23 @@ function renderTable(headers, rows){
   const trh=document.createElement("tr");
   const thSel=document.createElement("th"); thSel.className="selCol";
   const master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
-  master.addEventListener("change",()=>toggleSelectVisible(master.checked,true));
+  master.addEventListener("change",function(){ toggleSelectVisible(master.checked,true); });
   thSel.appendChild(master); trh.appendChild(thSel);
 
-  headers.forEach((h,i)=>{
+  headers.forEach(function(h,i){
     const th=document.createElement("th"); th.draggable=true; th.dataset.col=String(i);
     th.style.position="sticky"; th.style.top="0";
     const span=document.createElement("span"); span.className="headerInner"; span.textContent=h||("Column "+(i+1));
-    span.addEventListener("click",()=>onSortClick(i)); th.appendChild(span);
+    span.addEventListener("click",function(){ onSortClick(i); }); th.appendChild(span);
     const si=document.createElement("span"); si.className="sortIndicator"; si.textContent=(SORT_COL===i?(SORT_DIR===1?"▲":"▼"):""); span.appendChild(si);
     const handle=document.createElement("div"); handle.className="resizer";
-    handle.addEventListener("mousedown",startResize.bind(null,i));
-    handle.addEventListener("dblclick",autoFitColumn.bind(null,i));
+    handle.addEventListener("mousedown",function(ev){ startResize(i,ev); });
+    handle.addEventListener("dblclick",function(){ autoFitColumn(i); });
     th.appendChild(handle);
-    th.addEventListener("dragstart",(ev)=>{ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",i); });
-    th.addEventListener("dragend",()=>th.classList.remove("dragging"));
-    th.addEventListener("dragover",(ev)=>ev.preventDefault());
-    th.addEventListener("drop",(ev)=>{ ev.preventDefault(); const from=parseInt(ev.dataTransfer.getData("text/plain"),10); const to=i; if(Number.isInteger(from)&&from!==to) reorderColumns(from,to); });
+    th.addEventListener("dragstart",function(ev){ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",i); });
+    th.addEventListener("dragend",function(){ th.classList.remove("dragging"); });
+    th.addEventListener("dragover",function(ev){ ev.preventDefault(); });
+    th.addEventListener("drop",function(ev){ ev.preventDefault(); const from=parseInt(ev.dataTransfer.getData("text/plain"),10); const to=i; if(Number.isInteger(from)&&from!==to) reorderColumns(from,to); });
     trh.appendChild(th);
     const c=document.createElement("col"); c.dataset.col=String(i); colgroup.appendChild(c);
   });
@@ -519,27 +528,27 @@ function renderTable(headers, rows){
   const trf=document.createElement("tr"); trf.className="filters";
   const thfSel=document.createElement("th"); thfSel.className="selCol"; trf.appendChild(thfSel);
   FILTERS = new Array(headers.length).fill("");
-  headers.forEach((h,i)=>{
+  headers.forEach(function(h,i){
     const th=document.createElement("th"); th.dataset.col=String(i);
     const inp=document.createElement("input"); inp.type="search"; inp.placeholder="Filter…";
-    inp.addEventListener("input",()=>{ FILTERS[i]=inp.value.trim().toLowerCase(); applySearchAndFilters(); });
+    inp.addEventListener("input",function(){ FILTERS[i]=inp.value.trim().toLowerCase(); applySearchAndFilters(); });
     th.appendChild(inp); trf.appendChild(th);
   });
   thead.appendChild(trf);
 
   const tbody=document.createElement("tbody");
-  rows.forEach((r,idx)=>{
+  rows.forEach(function(r,idx){
     const tr=document.createElement("tr"); tr.dataset.index=String(idx);
-    tr.addEventListener("click",(e)=>{ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); const multi=e.shiftKey; const next=!cb.checked; setRowSelection(idx, next, multi); });
-    tr.addEventListener("mouseenter",()=>{ HOVER_INDEX=idx; updateAttributePanel(); });
-    tr.addEventListener("mouseleave",()=>{ HOVER_INDEX=-1; updateAttributePanel(); });
+    tr.addEventListener("click",function(e){ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); const multi=e.shiftKey; const next=!cb.checked; setRowSelection(idx, next, multi); });
+    tr.addEventListener("mouseenter",function(){ HOVER_INDEX=idx; updateAttributePanel(); });
+    tr.addEventListener("mouseleave",function(){ HOVER_INDEX=-1; updateAttributePanel(); });
 
     const tdSel=document.createElement("td"); tdSel.className="selCol";
     const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=SELECTED.has(idx);
-    cb.addEventListener("click",(e)=>{ e.stopPropagation(); setRowSelection(idx, e.target.checked, e.shiftKey); });
+    cb.addEventListener("click",function(e){ e.stopPropagation(); setRowSelection(idx, e.target.checked, e.shiftKey); });
     tdSel.appendChild(cb); tr.appendChild(tdSel);
 
-    r.forEach((v,i)=>{ const td=document.createElement("td"); td.dataset.col=String(i); td.textContent=(v==null?"":v); tr.appendChild(td); });
+    r.forEach(function(v,i){ const td=document.createElement("td"); td.dataset.col=String(i); td.textContent=(v==null?"":v); tr.appendChild(td); });
 
     if(SELECTED.has(idx)) tr.classList.add("selected");
     tbody.appendChild(tr);
@@ -563,12 +572,12 @@ function setRowSelection(idx, on, multi){
   if(!multi){
     const prev = Array.from(SELECTED);
     SELECTED.clear();
-    prev.forEach(i=>{
-      const tr = document.querySelector(`#sheet tbody tr[data-index="${i}"]`);
+    prev.forEach(function(i){
+      const tr = document.querySelector('#sheet tbody tr[data-index="'+i+'"]');
       if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
     });
   }
-  const tr = document.querySelector(`#sheet tbody tr[data-index="${idx}"]`);
+  const tr = document.querySelector('#sheet tbody tr[data-index="'+idx+'"]');
   if(on){
     SELECTED.add(idx);
     if(tr){ tr.classList.add("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=true; }
@@ -584,7 +593,7 @@ function toggleSelectVisible(on, forceMulti){
     if(visibleRows.length){ const idx=+visibleRows[0].dataset.index; setRowSelection(idx, true, false); }
     return;
   }
-  visibleRows.forEach(tr=>{
+  visibleRows.forEach(function(tr){
     const idx=+tr.dataset.index;
     const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=on;
     if(on){ SELECTED.add(idx); tr.classList.add("selected"); } else { SELECTED.delete(idx); tr.classList.remove("selected"); }
@@ -602,22 +611,23 @@ function updateCounts() {
   const visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
   const sel = SELECTED.size;
   const el = document.getElementById("count");
-  if (el) el.textContent = (visible === total ? `${total} rows` : `Showing ${visible} of ${total}`) + ` • ${sel} selected`;
+  if (el) el.textContent = (visible === total ? total+" rows" : ("Showing "+visible+" of "+total)) + " • " + sel + " selected";
 }
 function buildIndexRows(){
   const bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
-  INDEX_ROWS=bodyRows.map(tr=>{
+  INDEX_ROWS=bodyRows.map(function(tr){
     const texts = [];
-    tr.querySelectorAll('td[data-col]').forEach(td=>texts.push(td.textContent.toLowerCase()));
-    return { tr, texts };
+    tr.querySelectorAll('td[data-col]').forEach(function(td){ texts.push(td.textContent.toLowerCase()); });
+    return { tr: tr, texts: texts };
   });
 }
 function applySearchAndFilters(){
   const q = document.getElementById("q").value.trim().toLowerCase();
   const terms = q.split(/\s+/).filter(Boolean);
-  INDEX_ROWS.forEach(({tr, texts})=>{
-    const globalHit = terms.every(t => texts.some(x => x.includes(t)));
-    const perColHit = FILTERS.every((f,i)=>{
+  INDEX_ROWS.forEach(function(pair){
+    const tr = pair.tr, texts = pair.texts;
+    const globalHit = terms.every(function(t){ return texts.some(function(x){ return x.includes(t); }); });
+    const perColHit = FILTERS.every(function(f,i){
       if(!f) return true;
       const cell = texts[i] || "";
       return cell.includes(f);
@@ -628,28 +638,28 @@ function applySearchAndFilters(){
 }
 (function setupSearchOnce(){
   const q=document.getElementById("q");
-  const debounce=(fn,ms)=>{ let t; return ()=>{ clearTimeout(t); t=setTimeout(fn,ms); }; };
+  const debounce=function(fn,ms){ let t; return function(){ clearTimeout(t); t=setTimeout(fn,ms); }; };
   q.addEventListener("input", debounce(applySearchAndFilters,120));
 })();
 
 function onSortClick(i){
   if(SORT_COL===i) SORT_DIR=-SORT_DIR; else { SORT_COL=i; SORT_DIR=1; }
-  const zipped = ROWS.map((row,idx)=>({row, file:FILES[idx]}));
-  zipped.sort((A,B)=>{
+  const zipped = ROWS.map(function(row,idx){ return { row: row, file: FILES[idx] }; });
+  zipped.sort(function(A,B){
     const va=(A.row[i]??"").toString().toLowerCase();
     const vb=(B.row[i]??"").toString().toLowerCase();
     if(va<vb) return -1*SORT_DIR; if(va>vb) return 1*SORT_DIR; return 0;
   });
-  ROWS = zipped.map(z=>z.row);
-  FILES= zipped.map(z=>z.file);
+  ROWS = zipped.map(function(z){ return z.row; });
+  FILES= zipped.map(function(z){ return z.file; });
   SELECTED.clear();
   renderTable(HEADERS, ROWS);
 }
 function reorderColumns(from,to){
-  const move=(arr)=>{ const x=arr.splice(from,1)[0]; arr.splice(to,0,x); };
+  const move=function(arr){ const x=arr.splice(from,1)[0]; arr.splice(to,0,x); };
   move(HEADERS); move(COL_VISIBLE); move(COL_WIDTHS);
   FILTERS = moveFilters(FILTERS, from, to);
-  ROWS = ROWS.map(r=>{ const x=r.slice(); const cell=x.splice(from,1)[0]; x.splice(to,0,cell); return x; });
+  ROWS = ROWS.map(function(r){ const x=r.slice(); const cell=x.splice(from,1)[0]; x.splice(to,0,cell); return x; });
   renderTable(HEADERS, ROWS);
 }
 function moveFilters(arr, from, to){
@@ -657,21 +667,21 @@ function moveFilters(arr, from, to){
 }
 
 /* --------------------- Column visibility & widths --------------------- */
-function applyColumnVisibility(save=false){
+function applyColumnVisibility(saveFlag){
   const ths=document.querySelectorAll("#sheet thead th[data-col]");
   const tds=document.querySelectorAll("#sheet tbody td[data-col]");
   const cols=document.querySelectorAll("#colgroup col[data-col]");
   const filtThs=document.querySelectorAll("#sheet thead tr.filters th[data-col]");
-  ths.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
-  filtThs.forEach(th=>{ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
-  tds.forEach(td=>{ const i=+td.dataset.col; const hide=COL_VISIBLE[i]===false; td.classList.toggle("hidden-col", hide); });
-  cols.forEach(col=>{ const i=+col.dataset.col; const hide=COL_VISIBLE[i]===false; col.style.width = hide ? "0px" : (COL_WIDTHS[i] ? COL_WIDTHS[i]+"px" : ""); });
-  if(save) saveColState();
+  ths.forEach(function(th){ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
+  filtThs.forEach(function(th){ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
+  tds.forEach(function(td){ const i=+td.dataset.col; const hide=COL_VISIBLE[i]===false; td.classList.toggle("hidden-col", hide); });
+  cols.forEach(function(col){ const i=+col.dataset.col; const hide=COL_VISIBLE[i]===false; col.style.width = hide ? "0px" : (COL_WIDTHS[i] ? COL_WIDTHS[i]+"px" : ""); });
+  if(saveFlag) saveColState();
 }
 function applyColumnWidths(){
   const colgroup=document.getElementById("colgroup"); if(!colgroup) return;
-  COL_WIDTHS.forEach((w,i)=>{
-    let col=colgroup.querySelector(`col[data-col="${i}"]`);
+  COL_WIDTHS.forEach(function(w,i){
+    let col=colgroup.querySelector('col[data-col="'+i+'"]');
     if(!col){ col=document.createElement("col"); col.dataset.col=String(i); colgroup.appendChild(col); }
     col.style.width = (COL_VISIBLE[i]===false) ? "0px" : (w? w+"px" : "");
   });
@@ -680,29 +690,29 @@ function applyColumnWidths(){
 function saveColState(){ try{
   localStorage.setItem(VIS_KEY(VIEW_MODE), JSON.stringify(COL_VISIBLE));
   localStorage.setItem(WIDTH_KEY(VIEW_MODE), JSON.stringify(COL_WIDTHS));
-}catch{} }
+}catch(e){} }
 function restoreColState(){ try{
   const vis=JSON.parse(localStorage.getItem(VIS_KEY(VIEW_MODE))||"null");
   const wds=JSON.parse(localStorage.getItem(WIDTH_KEY(VIEW_MODE))||"null");
-  if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else COL_VISIBLE=HEADERS.map(()=>true);
-  if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else COL_WIDTHS=HEADERS.map(()=>null);
-}catch{ COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null); } }
+  if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else COL_VISIBLE=HEADERS.map(function(){ return true; });
+  if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else COL_WIDTHS=HEADERS.map(function(){ return null; });
+}catch(e){ COL_VISIBLE=HEADERS.map(function(){ return true; }); COL_WIDTHS=HEADERS.map(function(){ return null; }); } }
 
 /* Column resizing */
 let resizeState=null;
 function startResize(i,ev){
   ev.preventDefault();
-  const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
-  const col=document.querySelector(`#colgroup col[data-col="${i}"]`);
+  const th=document.querySelector('#sheet thead th[data-col="'+i+'"]');
+  const col=document.querySelector('#colgroup col[data-col="'+i+'"]');
   const startX=ev.clientX, startW=th.getBoundingClientRect().width;
-  resizeState={i,startX,startW,col};
+  resizeState={i:i,startX:startX,startW:startW,col:col};
   window.addEventListener("mousemove",onResizeMove);
   window.addEventListener("mouseup",endResize);
   document.body.style.cursor="col-resize";
 }
 function onResizeMove(ev){
   if(!resizeState) return;
-  const {i,startX,startW,col}=resizeState;
+  const i=resizeState.i, startX=resizeState.startX, startW=resizeState.startW, col=resizeState.col;
   const w=Math.max(60, Math.round(startW+(ev.clientX-startX)));
   COL_WIDTHS[i]=w;
   if(col) col.style.width=w+"px";
@@ -715,11 +725,11 @@ function endResize(){
   saveColState();
 }
 function autoFitColumn(i){
-  const th=document.querySelector(`#sheet thead th[data-col="${i}"]`);
-  const cells=Array.from(document.querySelectorAll(`#sheet tbody td[data-col="${i}"]`));
-  const measure=el=>Math.ceil(el.getBoundingClientRect().width);
+  const th=document.querySelector('#sheet thead th[data-col="'+i+'"]');
+  const cells=Array.from(document.querySelectorAll('#sheet tbody td[data-col="'+i+'"]'));
+  const measure=function(el){ return Math.ceil(el.getBoundingClientRect().width); };
   let maxW=measure(th);
-  cells.forEach(td=>{ maxW=Math.max(maxW, measure(td)); });
+  cells.forEach(function(td){ maxW=Math.max(maxW, measure(td)); });
   maxW=Math.min(Math.max(80, maxW+12), 800);
   COL_WIDTHS[i]=maxW;
   applyColumnWidths();
@@ -728,15 +738,15 @@ function autoFitColumn(i){
 /* --------------------- Menus --------------------- */
 function buildColumnsPanel(){
   const panel=document.getElementById("colsPanel");
-  panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation());
-  HEADERS.forEach((h,i)=>{
+  panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
+  HEADERS.forEach(function(h,i){
     const row=document.createElement("div"); row.className="panelRow";
     const label=document.createElement("span"); label.className="label"; label.textContent=h||("Column "+(i+1));
     const btn=document.createElement("button"); btn.className="togglebtn";
     const isOn = COL_VISIBLE[i] !== false;
     btn.setAttribute("aria-pressed", isOn ? "true" : "false");
     btn.title = (isOn ? "Hide" : "Show") + " column";
-    btn.addEventListener("click", ()=>{
+    btn.addEventListener("click", function(){
       const now = btn.getAttribute("aria-pressed")!=="true";
       btn.setAttribute("aria-pressed", now?"true":"false");
       COL_VISIBLE[i] = now;
@@ -752,22 +762,22 @@ function buildColumnsPanel(){
 }
 (function setupColumnsUIOnce(){
   const btn=document.getElementById("colsBtn"); const panel=document.getElementById("colsPanel");
-  btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
-  document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
+  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
 })();
 
 function buildSideColsPanel(){
   const panel=document.getElementById("sideColsPanel");
-  panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation());
+  panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
   const chosen = new Set(SIDE_COLS);
-  HEADERS.forEach((h)=>{
+  HEADERS.forEach(function(h){
     const row=document.createElement("div"); row.className="panelRow";
     const label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
     const btn=document.createElement("button"); btn.className="togglebtn";
     const isOn = chosen.has(h);
     btn.setAttribute("aria-pressed", isOn ? "true" : "false");
     btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
-    btn.addEventListener("click", ()=>{
+    btn.addEventListener("click", function(){
       const now = btn.getAttribute("aria-pressed")!=="true";
       btn.setAttribute("aria-pressed", now?"true":"false");
       if(now) chosen.add(h); else chosen.delete(h);
@@ -782,30 +792,30 @@ function buildSideColsPanel(){
 }
 (function setupSideColsUIOnce(){
   const btn=document.getElementById("sideColsBtn"); const panel=document.getElementById("sideColsPanel");
-  btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
-  document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
+  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
 })();
 
 function buildExportPanel(){
   const panel = document.getElementById("exportPanel");
   panel.innerHTML="";
-  panel.addEventListener("click",(e)=>e.stopPropagation());
+  panel.addEventListener("click",function(e){ e.stopPropagation(); });
   const formats = [
     {key:"md",   label:"Markdown (.md)"},
     {key:"csv",  label:"CSV (.csv)"},
     {key:"json", label:"JSON (.json)"},
-    {key:"pdf",  label:"PDF (print to PDF)"},
+    {key:"pdf",  label:"PDF (print to PDF)"}
   ];
-  formats.forEach(f=>{
+  formats.forEach(function(f){
     const row=document.createElement("div"); row.className="panelRow";
     const label=document.createElement("span"); label.className="label"; label.textContent=f.label;
     const radio=document.createElement("button"); radio.className="radiobtn"; radio.setAttribute("role","menuitemradio");
     radio.setAttribute("aria-checked", EXPORT_FMT===f.key ? "true":"false");
     radio.title = "Choose "+f.label;
-    radio.addEventListener("click", ()=>{
+    radio.addEventListener("click", function(){
       EXPORT_FMT = f.key;
       localStorage.setItem("dav:exportFmt", EXPORT_FMT);
-      panel.querySelectorAll(".radiobtn").forEach(b=>b.setAttribute("aria-checked","false"));
+      panel.querySelectorAll(".radiobtn").forEach(function(b){ b.setAttribute("aria-checked","false"); });
       radio.setAttribute("aria-checked","true");
       updateExportUI();
     });
@@ -814,7 +824,7 @@ function buildExportPanel(){
   const footer=document.createElement("div"); footer.className="exportFooter";
   const go=document.createElement("button"); go.className="iconbtn"; go.title="Export now";
   go.innerHTML = '<svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>';
-  go.addEventListener("click", ()=>{ doExport(); panel.classList.remove("open"); });
+  go.addEventListener("click", function(){ doExport(); panel.classList.remove("open"); });
   footer.appendChild(go);
   panel.appendChild(footer);
   const note=document.createElement("div"); note.className="note";
@@ -823,8 +833,8 @@ function buildExportPanel(){
 }
 (function setupExportUIOnce(){
   const btn=document.getElementById("exportBtn"); const panel=document.getElementById("exportPanel");
-  btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
-  document.addEventListener("click",(e)=>{ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
+  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
   buildExportPanel(); updateExportUI();
 })();
 function updateExportUI(){
@@ -834,121 +844,128 @@ function updateExportUI(){
 }
 
 /* --------------------- Export / Copy --------------------- */
-function visibleCols(){ const idxs=[]; COL_VISIBLE.forEach((v,i)=>{ if(v!==false) idxs.push(i); }); return idxs; }
-function filterCols(headers,rows){ const cols=visibleCols(); return { fh: cols.map(i=>headers[i]), fr: rows.map(r=>cols.map(i=>r[i])) }; }
-function toMarkdown(headers,rows,title){
-  const esc=v=>(v==null?"":String(v).replace(/\|/g,"\\|"));
-  const head="| "+headers.map(esc).join(" | ")+" |";
-  const sep ="| "+headers.map(()=> "---").join(" | ")+" |";
-  const body=rows.map(r=>"| "+r.map(esc).join(" | ")+" |").join("\n");
-  return (title?`# ${title}\n\n`:"")+head+"\n"+sep+"\n"+body+"\n";
+function visibleCols(){
+  const idxs=[];
+  COL_VISIBLE.forEach(function(v,i){ if(v!==false) idxs.push(i); });
+  return idxs;
 }
-function toCSV(headers,rows){ function esc(v){ if(v==null)v=""; v=String(v); if(/[\",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
-  const all=[headers,...rows]; return all.map(r=>r.map(esc).join(",")).join("\r\n")+"\r\n"; }
-function toJSONArray(headers,rows){ return rows.map(r=>{ const o={}; headers.forEach((h,i)=>o[h]=r[i]??""); return o; }); }
-function download(name,text,mime){ const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
-function escapeHtml(x){ return String(x).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
+function filterCols(headers,rows){
+  const cols=visibleCols();
+  return {
+    fh: cols.map(function(i){ return headers[i]; }),
+    fr: rows.map(function(r){ return cols.map(function(i){ return r[i]; }); })
+  };
+}
+function toMarkdown(headers,rows,title){
+  const esc=function(v){ return (v==null?"":String(v).replace(/\|/g,"\\|")); };
+  const head="| "+headers.map(esc).join(" | ")+" |";
+  const sep ="| "+headers.map(function(){ return "---"; }).join(" | ")+" |";
+  const body=rows.map(function(r){ return "| "+r.map(esc).join(" | ")+" |"; }).join("\n");
+  return (title?("# "+title+"\n\n"):"")+head+"\n"+sep+"\n"+body+"\n";
+}
+function toCSV(headers,rows){
+  function esc(v){ if(v==null)v=""; v=String(v); if(/[\",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
+  const all=[headers].concat(rows);
+  return all.map(function(r){ return r.map(esc).join(","); }).join("\r\n")+"\r\n";
+}
+function toJSONArray(headers,rows){
+  return rows.map(function(r){
+    const o={};
+    headers.forEach(function(h,i){ o[h]=r[i]??""; });
+    return o;
+  });
+}
+function download(name,text,mime){
+  const blob=new Blob([text],{type:mime});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+function escapeHtml(x){ return String(x).replace(/[&<>"]/g, function(s){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]; }); }
 function exportToPDF(headers, rows, title){
-  const style = `
-    <style>
-      body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}
-      h1{font-size:18px;margin:0 0 12px 0}
-      table{width:100%;border-collapse:collapse;table-layout:auto}
-      th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}
-      thead th{background:#f2f4f7;white-space:nowrap;}
-      td{white-space:pre-wrap;}
-      .meta{color:#555;font-size:11px;margin:8px 0 16px 0}
-      @media print{ body{margin:0;} }
-    </style>`;
-  const headRow = "<tr>"+headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")+"</tr>";
-  const bodyRows = rows.map(r=>"<tr>"+r.map(v=>`<td>${escapeHtml(v ?? "")}</td>`).join("")+"</tr>").join("");
-  const html = `
-    <!doctype html><html><head><meta charset="utf-8">${style}<title>${escapeHtml(title||"Export")}</title></head>
-    <body>
-      <h1>${escapeHtml(title||"Export")}</h1>
-      <div class="meta">Generated: ${new Date().toLocaleString()}</div>
-      <table><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table>
-      <script>window.onload=()=>{try{window.print();}catch(e){}}<\/script>
-    </body></html>`;
+  const style = '<style>body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}h1{font-size:18px;margin:0 0 12px 0}table{width:100%;border-collapse:collapse;table-layout:auto}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}thead th{background:#f2f4f7;white-space:nowrap;}td{white-space:pre-wrap;} .meta{color:#555;font-size:11px;margin:8px 0 16px 0}@media print{ body{margin:0;} }</style>';
+  const headRow = "<tr>"+headers.map(function(h){ return "<th>"+escapeHtml(h)+"</th>"; }).join("")+"</tr>";
+  const bodyRows = rows.map(function(r){ return "<tr>"+r.map(function(v){ return "<td>"+escapeHtml(v ?? "")+"</td>"; }).join("")+"</tr>"; }).join("");
+  const html = '<!doctype html><html><head><meta charset="utf-8">'+style+'<title>'+escapeHtml(title||"Export")+'</title></head><body><h1>'+escapeHtml(title||"Export")+'</h1><div class="meta">Generated: '+new Date().toLocaleString()+'</div><table><thead>'+headRow+'</thead><tbody>'+bodyRows+'</tbody></table><script>window.onload=()=>{try{window.print();}catch(e){}}<\/script></body></html>';
   const w=window.open("", "_blank");
   if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; }
   w.document.open(); w.document.write(html); w.document.close();
 }
-function slugify(s){ return String(s||"export").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "export"; }
-function currentTitle(){ const t=(document.getElementById("pageTitle")?.textContent?.trim()) || document.title || "DAV Export"; return t; }
+function slugify(s){ s=String(s||"export").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); return s || "export"; }
+function currentTitle(){ var el=document.getElementById("pageTitle"); var t=(el && el.textContent && el.textContent.trim()) || document.title || "DAV Export"; return t; }
 function doExport(){
   if(!HEADERS.length) return;
   const rows = (SELECTED.size>0)
-    ? Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i])
-    : Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)")).map(tr=>ROWS[+tr.dataset.index]);
-  const {fh,fr} = filterCols(HEADERS, rows);
+    ? Array.from(SELECTED).sort(function(a,b){return a-b;}).map(function(i){ return ROWS[i]; })
+    : Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)")).map(function(tr){ return ROWS[+tr.dataset.index]; });
+  const filtered = filterCols(HEADERS, rows);
+  const fh = filtered.fh, fr = filtered.fr;
   const base = slugify(currentTitle());
   if(EXPORT_FMT==="md"){
-    const md=toMarkdown(fh,fr,currentTitle()); download(`${base}.md`, md, "text/markdown");
+    const md=toMarkdown(fh,fr,currentTitle()); download(base+".md", md, "text/markdown");
   } else if(EXPORT_FMT==="csv"){
-    const csv=toCSV(fh,fr); download(`${base}.csv`, csv, "text/csv");
+    const csv=toCSV(fh,fr); download(base+".csv", csv, "text/csv");
   } else if(EXPORT_FMT==="json"){
-    const json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n"; download(`${base}.json`, json, "application/json");
+    const json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n"; download(base+".json", json, "application/json");
   } else if(EXPORT_FMT==="pdf"){
     exportToPDF(fh, fr, currentTitle());
   }
 }
-document.getElementById("copyBtn").addEventListener("click", async ()=>{
+document.getElementById("copyBtn").addEventListener("click", async function(){
   if(!HEADERS.length || SELECTED.size<1 || EXPORT_FMT==="pdf") return;
-  const rows = Array.from(SELECTED).sort((a,b)=>a-b).map(i=>ROWS[i]);
-  const {fh,fr}=filterCols(HEADERS, rows);
+  const rows = Array.from(SELECTED).sort(function(a,b){return a-b;}).map(function(i){ return ROWS[i]; });
+  const filtered = filterCols(HEADERS, rows);
+  const fh = filtered.fh, fr = filtered.fr;
   let text = "";
   if(EXPORT_FMT==="md"){ text = toMarkdown(fh,fr,""); }
   else if(EXPORT_FMT==="csv"){ text = toCSV(fh,fr); }
   else { const arr = toJSONArray(fh,fr); text = (arr.length===1 ? JSON.stringify(arr[0], null, 2) : JSON.stringify(arr, null, 2)); }
-  try{ await navigator.clipboard.writeText(text); toast(`Copied ${EXPORT_FMT.toUpperCase()} to clipboard`); }
-  catch{ const name = `selection.${EXPORT_FMT}`; const mime = EXPORT_FMT==="md" ? "text/markdown" : EXPORT_FMT==="csv" ? "text/csv" : "application/json"; download(name, text, mime); toast("Clipboard blocked — downloaded instead"); }
+  try{ await navigator.clipboard.writeText(text); toast("Copied "+EXPORT_FMT.toUpperCase()+" to clipboard"); }
+  catch(e){ const name = "selection."+EXPORT_FMT; const mime = EXPORT_FMT==="md" ? "text/markdown" : EXPORT_FMT==="csv" ? "text/csv" : "application/json"; download(name, text, mime); toast("Clipboard blocked — downloaded instead"); }
 });
-function toast(msg){ const el=document.getElementById("count"); const old=el.textContent; el.textContent=msg; setTimeout(()=>{ el.textContent=old; },1200); }
+function toast(msg){ const el=document.getElementById("count"); const old=el.textContent; el.textContent=msg; setTimeout(function(){ el.textContent=old; },1200); }
 
 /* --------------------- Add/Edit modal --------------------- */
-const addModal = ()=>document.getElementById("addModal");
-const addGrid  = ()=>document.getElementById("addGrid");
-const addMsg   = ()=>document.getElementById("addMsg");
-function openForm(isEdit=false){
+const addModal = function(){ return document.getElementById("addModal"); };
+const addGrid  = function(){ return document.getElementById("addGrid"); };
+const addMsg   = function(){ return document.getElementById("addMsg"); };
+function openForm(isEdit){
   if(!HEADERS.length){ alert("Data not loaded yet."); return; }
   if(!CAN_WRITE()){ alert("Editing disabled by configuration."); return; }
   document.getElementById("formTitle").textContent = isEdit ? "Edit Row" : "Add Row";
   const grid=addGrid(); grid.innerHTML="";
-  HEADERS.forEach((h,i)=>{ const lab=document.createElement("label"); lab.setAttribute("for","col_"+i); lab.textContent=h||("Column "+(i+1));
+  HEADERS.forEach(function(h,i){ const lab=document.createElement("label"); lab.setAttribute("for","col_"+i); lab.textContent=h||("Column "+(i+1));
     const inp=document.createElement("input"); inp.type="text"; inp.id="col_"+i; grid.appendChild(lab); grid.appendChild(inp); });
   if(isEdit && SELECTED.size===1){
-    const idx=[...SELECTED][0]; HEADERS.forEach((_,i)=>{ const el=document.getElementById("col_"+i); if(el) el.value=ROWS[idx][i]??""; });
+    const idx=Array.from(SELECTED)[0]; HEADERS.forEach(function(_,i){ const el=document.getElementById("col_"+i); if(el) el.value=ROWS[idx][i]??""; });
     EDIT_INDEX = idx;
   } else { EDIT_INDEX = -1; }
   setStatus("", null); addModal().classList.add("open"); addModal().setAttribute("aria-hidden","false");
 }
 function closeForm(){ addModal().classList.remove("open"); addModal().setAttribute("aria-hidden","true"); EDIT_INDEX=-1; }
 function setStatus(t,ok){ const el=addMsg(); el.textContent=t||""; el.classList.toggle("ok", ok===true); el.classList.toggle("err", ok===false); }
-document.getElementById("addBtn").addEventListener("click",()=>openForm(false));
-document.getElementById("editBtn").addEventListener("click",()=>{ if(SELECTED.size!==1){ alert("Select exactly one row to edit."); return; } openForm(true); });
+document.getElementById("addBtn").addEventListener("click",function(){ openForm(false); });
+document.getElementById("editBtn").addEventListener("click",function(){ if(SELECTED.size!==1){ alert("Select exactly one row to edit."); return; } openForm(true); });
 document.getElementById("addClose").addEventListener("click",closeForm);
-document.getElementById("addSave").addEventListener("click", async (e)=>{
+document.getElementById("addSave").addEventListener("click", async function(e){
   e.preventDefault();
   if(!CAN_WRITE()){ alert("Editing disabled by configuration."); return; }
-  const values = HEADERS.map((_,i)=>{ const el=document.getElementById("col_"+i); return el?el.value.trim():""; });
+  const values = HEADERS.map(function(_,i){ const el=document.getElementById("col_"+i); return el?el.value.trim():""; });
 
   let path, content, message, isEdit=(EDIT_INDEX>=0);
   if(VIEW_MODE==="json"){
-    const obj={}; HEADERS.forEach((h,i)=>obj[h]=values[i]??"");
+    const obj={}; HEADERS.forEach(function(h,i){ obj[h]=values[i]??""; });
     const firstCol = values[0] || "row";
     const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-    if(isEdit){ path = FILES[EDIT_INDEX].path; content = JSON.stringify(obj,null,2)+"\n"; message=`Edit JSON row: ${firstCol}`; }
-    else { const ts=new Date().toISOString().replace(/[^a-z0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.json`; content=JSON.stringify(obj,null,2)+"\n"; message=`Add JSON row: ${firstCol}`; }
+    if(isEdit){ path = FILES[EDIT_INDEX].path; content = JSON.stringify(obj,null,2)+"\n"; message="Edit JSON row: "+firstCol; }
+    else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=(SRC.dataDir?SRC.dataDir+"/":"")+(slug||"row")+"-"+ts+".json"; content=JSON.stringify(obj,null,2)+"\n"; message="Add JSON row: "+firstCol; }
   } else {
     const md = toMarkdown(HEADERS, [values], "");
     const firstCol = values[0] || "row";
     const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-    if(isEdit){ path = FILES[EDIT_INDEX].path; content = md; message=`Edit MD row: ${firstCol}`; }
-    else { const ts=new Date().toISOString().replace(/[^a-z0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.md`; content=md; message=`Add MD row: ${firstCol}`; }
+    if(isEdit){ path = FILES[EDIT_INDEX].path; content = md; message="Edit MD row: "+firstCol; }
+    else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=(SRC.dataDir?SRC.dataDir+"/":"")+(slug||"row")+"-"+ts+".md"; content=md; message="Add MD row: "+firstCol; }
   }
   try{
-    setStatus(isEdit?"Saving…":"Adding…");
+    setStatus(isEdit?"Saving…":"Adding…", null);
     let resp;
     if(isEdit){
       const sha = FILES[EDIT_INDEX].sha;
@@ -966,7 +983,7 @@ document.getElementById("addSave").addEventListener("click", async (e)=>{
     setStatus("Saved", true); setTimeout(closeForm, 350);
   }catch(err){
     console.warn("Write failed:", err);
-    const fname = (path||"row."+ (VIEW_MODE==="json"?"json":"md")).split("/").pop();
+    const fname = (path||("row."+(VIEW_MODE==="json"?"json":"md"))).split("/").pop();
     const mime = VIEW_MODE==="json" ? "application/json" : "text/markdown";
     const blob=new Blob([content||""],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
     setStatus("Downloaded (add to repo manually)", true);
@@ -977,41 +994,41 @@ document.getElementById("addSave").addEventListener("click", async (e)=>{
 async function loadMd(){
   const countEl=document.getElementById("count");
   ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
-  countEl.textContent=`Probing GitHub (branch ${ACTIVE_BRANCH})…`;
+  countEl.textContent="Probing GitHub (branch "+ACTIVE_BRANCH+")…";
 
   let list=[];
   if(SRC.type==="github"){
     const items = await ghListAll(SRC.dataDir || "");
-    list = items.filter(it=>it.type==="file" && /\.md$/i.test(it.name))
-                .sort((a,b)=>a.path.localeCompare(b.path))
-                .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
+    list = items.filter(function(it){ return it.type==="file" && /\.md$/i.test(it.name); })
+                .sort(function(a,b){ return a.path.localeCompare(b.path); })
+                .map(function(it){ return {name: it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}; });
   } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(u=>{ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
+    (SRC.urls||[]).forEach(function(u){ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
   }
 
   for(let i=0;i<list.length;i++){
-    const {name,url,path,sha}=list[i];
+    const name=list[i].name, url=list[i].url, path=list[i].path, sha=list[i].sha;
     try{
       const text=await fetchText(url);
       const parsed=parseFirstTable(text); if(!parsed) continue;
       if(HEADERS.length===0){
-        HEADERS=parsed.headers.length?parsed.headers:[]; 
-        if(HEADERS.length===0 && parsed.rows[0]) HEADERS = parsed.rows[0].map((_,k)=>"Column "+(k+1));
-        COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null);
+        HEADERS=parsed.headers.length?parsed.headers:[];
+        if(HEADERS.length===0 && parsed.rows[0]) HEADERS = parsed.rows[0].map(function(_,k){ return "Column "+(k+1); });
+        COL_VISIBLE=HEADERS.map(function(){ return true; }); COL_WIDTHS=HEADERS.map(function(){ return null; });
       }
       if(parsed.rows && parsed.rows.length){
         const row=parsed.rows[0];
-        const vals = HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??""));
+        const vals = HEADERS.map(function(_,idx){ return cleanBulletLines(row[idx]??""); });
         ROWS.push(vals);
-        FILES.push({name,url,path,sha});
+        FILES.push({name:name, url:url, path:path, sha:sha});
       }
-      countEl.textContent=`Loaded ${i+1}/${list.length} (MD)`;
+      countEl.textContent="Loaded "+(i+1)+"/"+list.length+" (MD)";
     }catch(e){ console.warn("Skip MD",name,e); }
   }
   if(HEADERS.length===0){
     const tbl=document.getElementById("sheet");
     const where = SRC.dataDir ? SRC.dataDir : "(repo root)";
-    tbl.innerHTML=`<thead><tr><th>No MD data found in <code>${where}</code> (recursive, branch ${ACTIVE_BRANCH}).</th></tr></thead>`;
+    tbl.innerHTML="<thead><tr><th>No MD data found in <code>"+where+"</code> (recursive, branch "+ACTIVE_BRANCH+").</th></tr></thead>";
     return;
   }
   renderTable(HEADERS, ROWS);
@@ -1019,33 +1036,33 @@ async function loadMd(){
 async function loadJson(){
   const countEl=document.getElementById("count");
   ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
-  countEl.textContent=`Probing GitHub (branch ${ACTIVE_BRANCH})…`;
+  countEl.textContent="Probing GitHub (branch "+ACTIVE_BRANCH+")…";
 
   let list=[];
   if(SRC.type==="github"){
     const items = await ghListAll(SRC.dataDir || "");
-    list = items.filter(it=>it.type==="file" && /\.json$/i.test(it.name))
-                .sort((a,b)=>a.path.localeCompare(b.path))
-                .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
+    list = items.filter(function(it){ return it.type==="file" && /\.json$/i.test(it.name); })
+                .sort(function(a,b){ return a.path.localeCompare(b.path); })
+                .map(function(it){ return {name: it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}; });
   } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(u=>{ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url=u, path=u, sha:null}); });
+    (SRC.urls||[]).forEach(function(u){ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
   }
 
   for(let i=0;i<list.length;i++){
-    const {name,url,path,sha}=list[i];
+    const name=list[i].name, url=list[i].url, path=list[i].path, sha=list[i].sha;
     try{
       const text=await fetchText(url);
       const obj=JSON.parse(text);
       const flat=flattenJson(obj);
       const vals=rowFromFlatGrowHeaders(flat);
-      ROWS.push(vals); FILES.push({name,url,path,sha});
-      countEl.textContent=`Loaded ${i+1}/${list.length} (JSON)`;
+      ROWS.push(vals); FILES.push({name:name, url:url, path:path, sha:sha});
+      countEl.textContent="Loaded "+(i+1)+"/"+list.length+" (JSON)";
     }catch(e){ console.warn("Skip JSON",name,e); }
   }
   if(HEADERS.length===0){
     const tbl=document.getElementById("sheet");
     const where = SRC.dataDir ? SRC.dataDir : "(repo root)";
-    tbl.innerHTML=`<thead><tr><th>No JSON data found in <code>${where}</code> (recursive, branch ${ACTIVE_BRANCH}).</th></tr></thead>`;
+    tbl.innerHTML="<thead><tr><th>No JSON data found in <code>"+where+"</code> (recursive, branch "+ACTIVE_BRANCH+").</th></tr></thead>";
     return;
   }
   renderTable(HEADERS, ROWS);
@@ -1057,23 +1074,23 @@ function setSideVisibility(on){
   mb.classList.toggle("side-hidden", !on);
   const btn = document.getElementById("toggleSideBtn");
   btn.setAttribute("aria-pressed", on ? "true" : "false");
-  try{ localStorage.setItem(SIDE_VISIBLE_KEY, on ? "1":"0"); }catch{}
+  try{ localStorage.setItem(SIDE_VISIBLE_KEY, on ? "1":"0"); }catch(e){}
 }
 (function setupSide(){
   const saved = localStorage.getItem(SIDE_VISIBLE_KEY);
   setSideVisibility(saved !== "0");
-  document.getElementById("toggleSideBtn").addEventListener("click", ()=>{
+  document.getElementById("toggleSideBtn").addEventListener("click", function(){
     const on = document.getElementById("toggleSideBtn").getAttribute("aria-pressed")!=="true";
     setSideVisibility(on);
   });
   const gutter = document.getElementById("gutter");
   let tracking = null;
-  gutter.addEventListener("mousedown",(e)=>{
+  gutter.addEventListener("mousedown",function(e){
     e.preventDefault();
     const side = document.querySelector(".side");
     const startX = e.clientX;
     const startW = side.getBoundingClientRect().width;
-    tracking = {startX,startW};
+    tracking = {startX:startX,startW:startW};
     document.body.style.cursor="col-resize";
     window.addEventListener("mousemove", drag);
     window.addEventListener("mouseup", stop);
@@ -1099,18 +1116,18 @@ function applyModeUI(){
   if(VIEW_MODE==="json"){ mdBtn.classList.remove("active"); mdBtn.setAttribute("aria-selected","false"); jsBtn.classList.add("active"); jsBtn.setAttribute("aria-selected","true"); }
   else { jsBtn.classList.remove("active"); jsBtn.setAttribute("aria-selected","false"); mdBtn.classList.add("active"); mdBtn.setAttribute("aria-selected","true"); }
 }
-document.getElementById("modeMd").addEventListener("click",()=>{ VIEW_MODE="md"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
-document.getElementById("modeJson").addEventListener("click",()=>{ VIEW_MODE="json"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
+document.getElementById("modeMd").addEventListener("click",function(){ VIEW_MODE="md"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
+document.getElementById("modeJson").addEventListener("click",function(){ VIEW_MODE="json"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
 
 async function reloadAll(){
   applyModeUI();
   const tbl=document.getElementById("sheet"); tbl.innerHTML="<thead><tr><th>Loading…</th></tr></thead>";
-  const diag = (SRC.type==="github") ? `owner=${SRC.owner} repo=${SRC.repo} dir=${SRC.dataDir||"(root)"} branch=${ACTIVE_BRANCH}` : `list (${(SRC.urls||[]).length} urls)`;
-  document.getElementById("count").textContent = `Loading (${diag})…`;
+  const diag = (SRC.type==="github") ? ("owner="+SRC.owner+" repo="+SRC.repo+" dir="+(SRC.dataDir||"(root)")+" branch="+ACTIVE_BRANCH) : ("list ("+((SRC.urls||[]).length)+") urls");
+  document.getElementById("count").textContent = "Loading ("+diag+")…";
   try{
     if(VIEW_MODE==="json") await loadJson(); else await loadMd();
   }catch(err){
-    tbl.innerHTML=`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>${(err&&err.message?escapeHtml(err.message):escapeHtml(String(err)))}</td></tr></tbody>`;
+    tbl.innerHTML="<thead><tr><th>Error</th></tr></thead><tbody><tr><td>"+(err&&err.message?escapeHtml(err.message):escapeHtml(String(err)))+"</td></tr></tbody>";
     console.error(err);
   }
 }
