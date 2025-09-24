@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Data Agnostic Viewer (DAV)</title>
 
-<!-- Only load config.js. No config.json preload to avoid 404. -->
+<!-- Only config.js is used -->
 <script src="config.js" defer></script>
 
 <style>
@@ -100,7 +100,7 @@
 
   .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
   .modalBackdrop.open{display:flex}
-  .modal{width:min(900px,92vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid --var(line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal{width:min(900px,92vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
   .modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
   .modal h2{margin:0;font-size:16px}
   .modal .content{padding:14px 16px}
@@ -142,7 +142,7 @@
       </div>
 
       <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
-        <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
+        <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
       </button>
       <button id="editBtn" class="iconbtn" title="Edit selected row" aria-label="Edit selected row" disabled>
         <svg class="icon" viewBox="0 0 16 16"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
@@ -423,6 +423,64 @@ function restoreSideCols(){
 }
 function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch{} }
 function sideColsIndices(){ return SIDE_COLS.map(name => HEADERS.indexOf(name)).filter(i => i>=0); }
+
+/* NEW: actually render the side (Attribute) panel */
+function updateAttributePanel(){
+  const container = document.getElementById("attrContainer");
+  if(!container) return;
+  container.innerHTML = "";
+
+  // Choose which row to show: hovered > single-selected > nothing
+  const idx = (HOVER_INDEX >= 0) ? HOVER_INDEX : (SELECTED.size === 1 ? [...SELECTED][0] : -1);
+  if(idx < 0 || !ROWS[idx]){
+    const msg = document.createElement("div");
+    msg.className = "section";
+    msg.innerHTML = "<em>Hover a row to preview, or select one.</em>";
+    container.appendChild(msg);
+    return;
+  }
+
+  // Which columns to show in the panel
+  const fields = SIDE_COLS.length ? SIDE_COLS : HEADERS.slice(0, Math.min(HEADERS.length, 6));
+
+  fields.forEach((name)=>{
+    const ci = HEADERS.indexOf(name);
+    if(ci < 0) return;
+    const raw = ROWS[idx][ci] ?? "";
+
+    const sec = document.createElement("div");
+    sec.className = "section";
+
+    const title = document.createElement("div");
+    title.style.fontWeight = "600";
+    title.style.marginBottom = "4px";
+    title.textContent = name;
+    sec.appendChild(title);
+
+    // Render multiline as numbered list; strip any leading numbers/bullets
+    const lines = String(raw).split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    if(lines.length > 1){
+      const ol = document.createElement("ol");
+      ol.className = "attrlist";
+      lines.forEach(line=>{
+        const clean = line
+          .replace(/^[-*•–—]\s+/,"")
+          .replace(/^\d+[\.\)]\s+/,"")
+          .replace(/^\(\d+\)\s+/,"")
+          .replace(/^- \[[ xX]\]\s+/,"");
+        const li = document.createElement("li");
+        li.textContent = clean;
+        ol.appendChild(li);
+      });
+      sec.appendChild(ol);
+    } else {
+      const p = document.createElement("div");
+      p.textContent = raw;
+      sec.appendChild(p);
+    }
+    container.appendChild(sec);
+  });
+}
 
 /* --------------------- Table rendering --------------------- */
 function renderTable(headers, rows){
@@ -881,13 +939,13 @@ document.getElementById("addSave").addEventListener("click", async (e)=>{
     const firstCol = values[0] || "row";
     const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
     if(isEdit){ path = FILES[EDIT_INDEX].path; content = JSON.stringify(obj,null,2)+"\n"; message=`Edit JSON row: ${firstCol}`; }
-    else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.json`; content=JSON.stringify(obj,null,2)+"\n"; message=`Add JSON row: ${firstCol}`; }
+    else { const ts=new Date().toISOString().replace(/[^a-z0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.json`; content=JSON.stringify(obj,null,2)+"\n"; message=`Add JSON row: ${firstCol}`; }
   } else {
     const md = toMarkdown(HEADERS, [values], "");
     const firstCol = values[0] || "row";
     const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
     if(isEdit){ path = FILES[EDIT_INDEX].path; content = md; message=`Edit MD row: ${firstCol}`; }
-    else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.md`; content=md; message=`Add MD row: ${firstCol}`; }
+    else { const ts=new Date().toISOString().replace(/[^a-z0-9]/g,"").slice(0,14); path=`${SRC.dataDir}/${slug||"row"}-${ts}.md`; content=md; message=`Add MD row: ${firstCol}`; }
   }
   try{
     setStatus(isEdit?"Saving…":"Adding…");
@@ -970,7 +1028,7 @@ async function loadJson(){
                 .sort((a,b)=>a.path.localeCompare(b.path))
                 .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
   } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(u=>{ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
+    (SRC.urls||[]).forEach(u=>{ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url=u, path=u, sha:null}); });
   }
 
   for(let i=0;i<list.length;i++){
@@ -992,6 +1050,47 @@ async function loadJson(){
   }
   renderTable(HEADERS, ROWS);
 }
+
+/* --------------------- Side panel: show/hide + gutter resize --------------------- */
+function setSideVisibility(on){
+  const mb = document.querySelector(".mainbar");
+  mb.classList.toggle("side-hidden", !on);
+  const btn = document.getElementById("toggleSideBtn");
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  try{ localStorage.setItem(SIDE_VISIBLE_KEY, on ? "1":"0"); }catch{}
+}
+(function setupSide(){
+  const saved = localStorage.getItem(SIDE_VISIBLE_KEY);
+  setSideVisibility(saved !== "0");
+  document.getElementById("toggleSideBtn").addEventListener("click", ()=>{
+    const on = document.getElementById("toggleSideBtn").getAttribute("aria-pressed")!=="true";
+    setSideVisibility(on);
+  });
+  const gutter = document.getElementById("gutter");
+  let tracking = null;
+  gutter.addEventListener("mousedown",(e)=>{
+    e.preventDefault();
+    const side = document.querySelector(".side");
+    const startX = e.clientX;
+    const startW = side.getBoundingClientRect().width;
+    tracking = {startX,startW};
+    document.body.style.cursor="col-resize";
+    window.addEventListener("mousemove", drag);
+    window.addEventListener("mouseup", stop);
+  });
+  function drag(e){
+    if(!tracking) return;
+    const dx = tracking.startX - e.clientX;
+    const newW = Math.min(Math.max(260, tracking.startW + dx), Math.round(window.innerWidth*0.7));
+    document.documentElement.style.setProperty("--side-width", newW+"px");
+  }
+  function stop(){
+    window.removeEventListener("mousemove", drag);
+    window.removeEventListener("mouseup", stop);
+    document.body.style.cursor="";
+    tracking=null;
+  }
+})();
 
 /* --------------------- Mode & boot --------------------- */
 function applyModeUI(){
@@ -1019,7 +1118,6 @@ async function reloadAll(){
 /* --------------------- Init --------------------- */
 (function init(){
   resolveConfigSync();
-  // If config.js defines ui.startMode, prefer it on first run
   const start = (CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md";
   if(!localStorage.getItem("viewMode")) VIEW_MODE = start;
   reloadAll();
