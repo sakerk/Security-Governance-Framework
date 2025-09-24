@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Data Agnostic Viewer (DAV)</title>
 
-<!-- Only config.js is used -->
+<!-- Config (kept separate) -->
 <script src="config.js" defer></script>
 
 <style>
@@ -15,7 +15,7 @@
     --side-width: 380px;
   }
   html,body{height:100%}
-  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
   *{scrollbar-width:thin; scrollbar-color:#344256 #0b1220;}
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-track{background:#0b1220}
@@ -65,7 +65,7 @@
   .icon{width:16px;height:16px;fill:currentColor}
 
   .columnsWrap,.sideFieldsWrap,.exportWrap{display:flex;gap:8px;align-items:center;position:relative}
-  .colsPanel{display:none;position:absolute;top:42px;right:0;z-index:1000;min-width:280px;max-height:60vh;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .colsPanel{display:none;position:absolute;top:42px;right:0;z-index:1000;min-width:300px;max-height:60vh;overflow:auto;background:#0b1220;border:1px solid #263241;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
   .colsPanel.open{display:block}
   .panelRow{display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:8px}
   .panelRow:hover{background:#0f213c}
@@ -91,6 +91,13 @@
   .seg{display:inline-flex;border:1px solid #27415f;border-radius:12px;overflow:hidden}
   .seg button{border:0;background:#0f213c;color:#dbeafe;padding:8px 12px;cursor:pointer}
   .seg button.active{background:#13305a}
+
+  /* Selected fields list (reorder) */
+  .selectedListTitle{font-weight:600;margin:4px 2px 6px 2px;font-size:13px;color:#cbd5e1}
+  .selectedList{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .selectedItem{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px dashed #2a3a55;border-radius:8px;background:#0e1a30}
+  .drag{width:16px;height:16px;opacity:.7}
+  .selectedItem .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
   @media (max-width:900px){
     .title{display:none}
@@ -135,10 +142,10 @@
 
     <div class="controls">
       <div class="sideFieldsWrap">
-        <button id="sideColsBtn" class="iconbtn" title="Choose fields for Attribute Panel" aria-haspopup="true" aria-expanded="false">
+        <button id="sideColsBtn" class="iconbtn" title="Attribute Fields" aria-haspopup="true" aria-expanded="false">
           <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3a.75.75 0 0 1 0-1.5h6.5a.75.75 0 0 1 0 1.5h-6.5ZM2 4.75c0-.414.336-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 2 4.75Zm0 7.5c0-.414.336-.75.75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 2 12.25Zm11.25-4.5a.75.75 0 0 0 0-1.5H7.75a.75.75 0 0 0 0 1.5h5.5Z"/></svg>
         </button>
-        <div id="sideColsPanel" class="colsPanel" role="dialog" aria-label="Choose fields for Attribute Panel"></div>
+        <div id="sideColsPanel" class="colsPanel" role="dialog" aria-label="Choose & order fields for Attribute Panel"></div>
       </div>
 
       <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
@@ -352,7 +359,7 @@ function parseFirstTable(md){
       const headers=splitCells(headerLine), rows=[];
       for(let j=i+2;j<lines.length;j++){
         const ln=lines[j]; if(!/^\s*\|.*\|\s*$/.test(ln)) break;
-        const cells=splitCells(ln); if(cells.every(c=>c.trim()==="")) continue;
+        const cells=splitCells(ln); if(cells.every(function(c){return c.trim()==="";})) continue;
         rows.push(cells);
       }
       return { headers: headers, rows: rows };
@@ -380,15 +387,23 @@ function cleanBulletLines(text){
   });
   return cleaned.map(function(l,i){ return (i+1)+". "+l; }).join("\n");
 }
+/* Flatten JSON; lift top-level "data" object keys without the "data." prefix */
 function flattenJson(obj){
   const out={};
   Object.keys(obj||{}).forEach(function(k){
     const v = obj[k];
     if(isObj(v)){
-      Object.keys(v).forEach(function(k2){
-        const v2 = v[k2];
-        out[k+"."+k2] = isObj(v2) ? JSON.stringify(v2) : Array.isArray(v2) ? cleanBulletLines(v2.join("\n")) : cleanBulletLines(v2);
-      });
+      if(k.toLowerCase() === "data"){
+        Object.keys(v).forEach(function(k2){
+          const v2 = v[k2];
+          out[k2] = isObj(v2) ? JSON.stringify(v2) : Array.isArray(v2) ? cleanBulletLines(v2.join("\n")) : cleanBulletLines(v2);
+        });
+      } else {
+        Object.keys(v).forEach(function(k2){
+          const v2 = v[k2];
+          out[k+"."+k2] = isObj(v2) ? JSON.stringify(v2) : Array.isArray(v2) ? cleanBulletLines(v2.join("\n")) : cleanBulletLines(v2);
+        });
+      }
     } else if(Array.isArray(v)){
       out[k] = cleanBulletLines(v.join("\n"));
     } else {
@@ -432,10 +447,9 @@ function restoreSideCols(){
       if(Array.isArray(arr)) { SIDE_COLS = arr.filter(function(h){ return HEADERS.indexOf(h)!==-1; }); return; }
     }catch(e){}
   }
-  SIDE_COLS = [];
+  SIDE_COLS = []; /* default to none selected now */
 }
 function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch(e){} }
-function sideColsIndices(){ return SIDE_COLS.map(function(name){ return HEADERS.indexOf(name); }).filter(function(i){ return i>=0; }); }
 
 function updateAttributePanel(){
   const container = document.getElementById("attrContainer");
@@ -451,11 +465,20 @@ function updateAttributePanel(){
     return;
   }
 
-  const fields = SIDE_COLS.length ? SIDE_COLS : HEADERS.slice(0, Math.min(HEADERS.length, 6));
+  /* Respect explicit selection only: if none chosen, show nothing */
+  const fields = SIDE_COLS.slice();
+  if(fields.length === 0){
+    const info = document.createElement("div");
+    info.className = "section";
+    info.innerHTML = "<em>No fields selected for Attribute Panel.</em>";
+    container.appendChild(info);
+    return;
+  }
 
-  fields.forEach(function(name){
+  for(var f=0; f<fields.length; f++){
+    var name = fields[f];
     const ci = HEADERS.indexOf(name);
-    if(ci < 0) return;
+    if(ci < 0) continue;
     const raw = ROWS[idx][ci] ?? "";
 
     const sec = document.createElement("div");
@@ -488,10 +511,108 @@ function updateAttributePanel(){
       sec.appendChild(p);
     }
     container.appendChild(sec);
-  });
+  }
 }
 
-/* --------------------- Table rendering --------------------- */
+/* --------------------- Side fields panel (toggle + reorder) --------------------- */
+function buildSideColsPanel(){
+  const panel=document.getElementById("sideColsPanel");
+  panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
+
+  /* Selected list (drag to reorder) */
+  const selTitle = document.createElement("div");
+  selTitle.className = "selectedListTitle";
+  selTitle.textContent = "Selected (drag to reorder):";
+  panel.appendChild(selTitle);
+
+  const selList = document.createElement("div");
+  selList.className = "selectedList";
+  panel.appendChild(selList);
+
+  var dragFrom = -1;
+  function rebuildSelected(){
+    selList.innerHTML = "";
+    for(var i=0;i<SIDE_COLS.length;i++){
+      (function(iLocal){
+        const name = SIDE_COLS[iLocal];
+        const item = document.createElement("div");
+        item.className = "selectedItem";
+        item.setAttribute("draggable","true");
+        item.dataset.index = String(iLocal);
+
+        const drag = document.createElementNS("http://www.w3.org/2000/svg","svg");
+        drag.setAttribute("viewBox","0 0 16 16");
+        drag.classList.add("drag");
+        drag.innerHTML = '<path fill="currentColor" d="M5 3h2v2H5V3Zm4 0h2v2H9V3ZM5 7h2v2H5V7Zm4 0h2v2H9V7ZM5 11h2v2H5v-2Zm4 0h2v2H9v-2Z"/>';
+        item.appendChild(drag);
+
+        const label = document.createElement("div");
+        label.className = "name";
+        label.textContent = name;
+        item.appendChild(label);
+
+        item.addEventListener("dragstart", function(){ dragFrom = iLocal; });
+        item.addEventListener("dragover", function(e){ e.preventDefault(); });
+        item.addEventListener("drop", function(e){
+          e.preventDefault();
+          const to = iLocal;
+          if(dragFrom===-1 || dragFrom===to) return;
+          const arr = SIDE_COLS.slice();
+          const m = arr.splice(dragFrom,1)[0];
+          arr.splice(to,0,m);
+          SIDE_COLS = arr;
+          saveSideCols();
+          rebuildSelected();
+          updateAttributePanel();
+        });
+
+        selList.appendChild(item);
+      })(i);
+    }
+  }
+  rebuildSelected();
+
+  /* Full toggle list */
+  const divider = document.createElement("div");
+  divider.className = "selectedListTitle";
+  divider.textContent = "Available fields:";
+  panel.appendChild(divider);
+
+  const chosen = new Set(SIDE_COLS);
+  HEADERS.forEach(function(h){
+    const row=document.createElement("div"); row.className="panelRow";
+    const label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
+    const btn=document.createElement("button"); btn.className="togglebtn";
+    const isOn = chosen.has(h);
+    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+    btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
+    btn.addEventListener("click", function(){
+      const now = btn.getAttribute("aria-pressed")!=="true";
+      btn.setAttribute("aria-pressed", now?"true":"false");
+      if(now){
+        chosen.add(h);
+        SIDE_COLS.push(h);
+      } else {
+        chosen.delete(h);
+        SIDE_COLS = SIDE_COLS.filter(function(x){ return x!==h; });
+      }
+      saveSideCols(); updateAttributePanel(); rebuildSelected();
+      btn.title = (now ? "Remove from" : "Add to") + " Attribute Panel";
+    });
+    row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
+  });
+
+  const note=document.createElement("div"); note.className="note";
+  note.textContent="Pick which fields show on the right, and drag the selected list to set their order (saved per mode).";
+  panel.appendChild(note);
+}
+(function setupSideColsUIOnce(){
+  const btn=document.getElementById("sideColsBtn"); const panel=document.getElementById("sideColsPanel");
+  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
+})();
+
+/* --------------------- Table rendering (unchanged UI) --------------------- */
 function renderTable(headers, rows){
   const tbl = document.getElementById("sheet");
   tbl.innerHTML="";
@@ -566,6 +687,37 @@ function renderTable(headers, rows){
     document.getElementById("editBtn").style.display="none";
   }
 }
+
+/* --------------------- Column panel --------------------- */
+function buildColumnsPanel(){
+  const panel=document.getElementById("colsPanel");
+  panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
+  HEADERS.forEach(function(h,i){
+    const row=document.createElement("div"); row.className="panelRow";
+    const label=document.createElement("span"); label.className="label"; label.textContent=h||("Column "+(i+1));
+    const btn=document.createElement("button"); btn.className="togglebtn";
+    const isOn = COL_VISIBLE[i] !== false;
+    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+    btn.title = (isOn ? "Hide" : "Show") + " column";
+    btn.addEventListener("click", function(){
+      const now = btn.getAttribute("aria-pressed")!=="true";
+      btn.setAttribute("aria-pressed", now?"true":"false");
+      COL_VISIBLE[i] = now;
+      applyColumnVisibility(true);
+      buildIndexRows(); applySearchAndFilters();
+      btn.title = (now ? "Hide" : "Show") + " column";
+    });
+    row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
+  });
+  const note=document.createElement("div"); note.className="note";
+  note.textContent="Toggle column visibility. Tips: drag header edge to resize (double-click to auto-fit), drag headers to reorder, click header to sort.";
+  panel.appendChild(note);
+}
+(function setupColumnsUIOnce(){
+  const btn=document.getElementById("colsBtn"); const panel=document.getElementById("colsPanel");
+  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
+})();
 
 /* --------------------- Selection/Search/Sort --------------------- */
 function setRowSelection(idx, on, multi){
@@ -735,67 +887,7 @@ function autoFitColumn(i){
   applyColumnWidths();
 }
 
-/* --------------------- Menus --------------------- */
-function buildColumnsPanel(){
-  const panel=document.getElementById("colsPanel");
-  panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
-  HEADERS.forEach(function(h,i){
-    const row=document.createElement("div"); row.className="panelRow";
-    const label=document.createElement("span"); label.className="label"; label.textContent=h||("Column "+(i+1));
-    const btn=document.createElement("button"); btn.className="togglebtn";
-    const isOn = COL_VISIBLE[i] !== false;
-    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
-    btn.title = (isOn ? "Hide" : "Show") + " column";
-    btn.addEventListener("click", function(){
-      const now = btn.getAttribute("aria-pressed")!=="true";
-      btn.setAttribute("aria-pressed", now?"true":"false");
-      COL_VISIBLE[i] = now;
-      applyColumnVisibility(true);
-      buildIndexRows(); applySearchAndFilters();
-      btn.title = (now ? "Hide" : "Show") + " column";
-    });
-    row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
-  });
-  const note=document.createElement("div"); note.className="note";
-  note.textContent="Toggle column visibility. Tips: drag header edge to resize (double-click to auto-fit), drag headers to reorder, click header to sort.";
-  panel.appendChild(note);
-}
-(function setupColumnsUIOnce(){
-  const btn=document.getElementById("colsBtn"); const panel=document.getElementById("colsPanel");
-  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
-  document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
-})();
-
-function buildSideColsPanel(){
-  const panel=document.getElementById("sideColsPanel");
-  panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
-  const chosen = new Set(SIDE_COLS);
-  HEADERS.forEach(function(h){
-    const row=document.createElement("div"); row.className="panelRow";
-    const label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
-    const btn=document.createElement("button"); btn.className="togglebtn";
-    const isOn = chosen.has(h);
-    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
-    btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
-    btn.addEventListener("click", function(){
-      const now = btn.getAttribute("aria-pressed")!=="true";
-      btn.setAttribute("aria-pressed", now?"true":"false");
-      if(now) chosen.add(h); else chosen.delete(h);
-      SIDE_COLS = Array.from(chosen); saveSideCols(); updateAttributePanel();
-      btn.title = (now ? "Remove from" : "Add to") + " Attribute Panel";
-    });
-    row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
-  });
-  const note=document.createElement("div"); note.className="note";
-  note.textContent="Choose which columns appear on the right (saved per view mode).";
-  panel.appendChild(note);
-}
-(function setupSideColsUIOnce(){
-  const btn=document.getElementById("sideColsBtn"); const panel=document.getElementById("sideColsPanel");
-  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
-  document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
-})();
-
+/* --------------------- Export Panel --------------------- */
 function buildExportPanel(){
   const panel = document.getElementById("exportPanel");
   panel.innerHTML="";
@@ -923,73 +1015,6 @@ document.getElementById("copyBtn").addEventListener("click", async function(){
 });
 function toast(msg){ const el=document.getElementById("count"); const old=el.textContent; el.textContent=msg; setTimeout(function(){ el.textContent=old; },1200); }
 
-/* --------------------- Add/Edit modal --------------------- */
-const addModal = function(){ return document.getElementById("addModal"); };
-const addGrid  = function(){ return document.getElementById("addGrid"); };
-const addMsg   = function(){ return document.getElementById("addMsg"); };
-function openForm(isEdit){
-  if(!HEADERS.length){ alert("Data not loaded yet."); return; }
-  if(!CAN_WRITE()){ alert("Editing disabled by configuration."); return; }
-  document.getElementById("formTitle").textContent = isEdit ? "Edit Row" : "Add Row";
-  const grid=addGrid(); grid.innerHTML="";
-  HEADERS.forEach(function(h,i){ const lab=document.createElement("label"); lab.setAttribute("for","col_"+i); lab.textContent=h||("Column "+(i+1));
-    const inp=document.createElement("input"); inp.type="text"; inp.id="col_"+i; grid.appendChild(lab); grid.appendChild(inp); });
-  if(isEdit && SELECTED.size===1){
-    const idx=Array.from(SELECTED)[0]; HEADERS.forEach(function(_,i){ const el=document.getElementById("col_"+i); if(el) el.value=ROWS[idx][i]??""; });
-    EDIT_INDEX = idx;
-  } else { EDIT_INDEX = -1; }
-  setStatus("", null); addModal().classList.add("open"); addModal().setAttribute("aria-hidden","false");
-}
-function closeForm(){ addModal().classList.remove("open"); addModal().setAttribute("aria-hidden","true"); EDIT_INDEX=-1; }
-function setStatus(t,ok){ const el=addMsg(); el.textContent=t||""; el.classList.toggle("ok", ok===true); el.classList.toggle("err", ok===false); }
-document.getElementById("addBtn").addEventListener("click",function(){ openForm(false); });
-document.getElementById("editBtn").addEventListener("click",function(){ if(SELECTED.size!==1){ alert("Select exactly one row to edit."); return; } openForm(true); });
-document.getElementById("addClose").addEventListener("click",closeForm);
-document.getElementById("addSave").addEventListener("click", async function(e){
-  e.preventDefault();
-  if(!CAN_WRITE()){ alert("Editing disabled by configuration."); return; }
-  const values = HEADERS.map(function(_,i){ const el=document.getElementById("col_"+i); return el?el.value.trim():""; });
-
-  let path, content, message, isEdit=(EDIT_INDEX>=0);
-  if(VIEW_MODE==="json"){
-    const obj={}; HEADERS.forEach(function(h,i){ obj[h]=values[i]??""; });
-    const firstCol = values[0] || "row";
-    const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-    if(isEdit){ path = FILES[EDIT_INDEX].path; content = JSON.stringify(obj,null,2)+"\n"; message="Edit JSON row: "+firstCol; }
-    else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=(SRC.dataDir?SRC.dataDir+"/":"")+(slug||"row")+"-"+ts+".json"; content=JSON.stringify(obj,null,2)+"\n"; message="Add JSON row: "+firstCol; }
-  } else {
-    const md = toMarkdown(HEADERS, [values], "");
-    const firstCol = values[0] || "row";
-    const slug = firstCol.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
-    if(isEdit){ path = FILES[EDIT_INDEX].path; content = md; message="Edit MD row: "+firstCol; }
-    else { const ts=new Date().toISOString().replace(/[^0-9]/g,"").slice(0,14); path=(SRC.dataDir?SRC.dataDir+"/":"")+(slug||"row")+"-"+ts+".md"; content=md; message="Add MD row: "+firstCol; }
-  }
-  try{
-    setStatus(isEdit?"Saving…":"Adding…", null);
-    let resp;
-    if(isEdit){
-      const sha = FILES[EDIT_INDEX].sha;
-      resp = await updateFileInRepo(path, content, message, sha);
-      const newSha = resp && resp.content && resp.content.sha ? resp.content.sha : null;
-      if(newSha) FILES[EDIT_INDEX].sha = newSha;
-      ROWS[EDIT_INDEX] = values;
-    } else {
-      resp = await createFileInRepo(path, content, message);
-      const info = resp && resp.content ? resp.content : {};
-      FILES.push({path: info.path || path, sha: info.sha || null, name: info.name || path.split("/").pop(), url: info.download_url || ghRawUrl(path)});
-      ROWS.push(values);
-    }
-    renderTable(HEADERS, ROWS);
-    setStatus("Saved", true); setTimeout(closeForm, 350);
-  }catch(err){
-    console.warn("Write failed:", err);
-    const fname = (path||("row."+(VIEW_MODE==="json"?"json":"md"))).split("/").pop();
-    const mime = VIEW_MODE==="json" ? "application/json" : "text/markdown";
-    const blob=new Blob([content||""],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
-    setStatus("Downloaded (add to repo manually)", true);
-  }
-});
-
 /* --------------------- Loaders (recursive) --------------------- */
 async function loadMd(){
   const countEl=document.getElementById("count");
@@ -1003,7 +1028,7 @@ async function loadMd(){
                 .sort(function(a,b){ return a.path.localeCompare(b.path); })
                 .map(function(it){ return {name: it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}; });
   } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(function(u){ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
+    (SRC.urls||[]).forEach(function(u){ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url=u, path=u, sha:null}); });
   }
 
   for(let i=0;i<list.length;i++){
@@ -1045,7 +1070,7 @@ async function loadJson(){
                 .sort(function(a,b){ return a.path.localeCompare(b.path); })
                 .map(function(it){ return {name: it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}; });
   } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(function(u){ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
+    (SRC.urls||[]).forEach(function(u){ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url=u, path=u, sha:null}); });
   }
 
   for(let i=0;i<list.length;i++){
