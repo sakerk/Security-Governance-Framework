@@ -132,7 +132,12 @@
     .msg{font-size:13px;margin-right:auto}
     .msg.ok{color:var(--ok)} .msg.err{color:var(--danger)}
     @media (max-width:900px){ .modal .grid{grid-template-columns:1fr} .modal label{padding-top:0} }
-  </style>
+  
+/* Drag affordances inside the Attribute Panel chooser */
+  .panelRow.draggable{ cursor: grab; }
+  .panelRow.dragging{ opacity: .6; }
+  .panelRow.drag-over{ outline: 1px dashed #27415f; }
+</style>
 </head>
 <body>
   <div class="app">
@@ -704,31 +709,129 @@
 
     // ---- Side panel fields dropdown (no checkboxes; toggle pill) ----
     function buildSideColsPanel(){
-      const panel=document.getElementById("sideColsPanel");
-      panel.innerHTML=""; panel.addEventListener("click",(e)=>e.stopPropagation());
+  const panel = document.getElementById("sideColsPanel");
+  if(!panel) return;
+  panel.innerHTML = "";
+  panel.onclick = (e)=>e.stopPropagation();
 
-      const chosen = new Set(SIDE_COLS);
-      HEADERS.forEach((h)=>{
-        const row=document.createElement("div"); row.className="panelRow";
-        const label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
-        const btn=document.createElement("button"); btn.className="togglebtn";
-        const isOn = chosen.has(h);
-        btn.setAttribute("aria-pressed", isOn ? "true" : "false");
-        btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
-        btn.addEventListener("click", ()=>{
-          const now = btn.getAttribute("aria-pressed")!=="true";
-          btn.setAttribute("aria-pressed", now?"true":"false");
-          if(now) chosen.add(h); else chosen.delete(h);
-          SIDE_COLS = Array.from(chosen); saveSideCols(); updateAttributePanel();
-          btn.title = (now ? "Remove from" : "Add to") + " Attribute Panel";
-        });
-        row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
+  const title = document.createElement("div");
+  title.style.fontWeight = "600";
+  title.style.marginBottom = "6px";
+  title.textContent = "Attribute Panel fields (drag to reorder):";
+  panel.appendChild(title);
+
+  // Selected fields (reorderable)
+  const list = document.createElement("div");
+  panel.appendChild(list);
+
+  let dragIndex = -1;
+  function renderSelected(){
+    list.innerHTML = "";
+    SIDE_COLS.forEach((name, i)=>{
+      const row = document.createElement("div");
+      row.className = "panelRow draggable";
+      row.setAttribute("draggable","true");
+
+      const handle = document.createElement("span");
+      handle.textContent = "⋮⋮";
+      handle.style.opacity = ".6";
+      handle.style.padding = "0 4px";
+
+      const lbl = document.createElement("span");
+      lbl.className = "label";
+      lbl.textContent = name;
+
+      const rm = document.createElement("button");
+      rm.className = "togglebtn";
+      rm.setAttribute("aria-pressed","true");
+      rm.title = "Remove";
+      rm.addEventListener("click", ()=>{
+        SIDE_COLS = SIDE_COLS.filter(n => n !== name);
+        saveSideCols();
+        renderSelected();
+        updateAttributePanel();
       });
 
-      const note=document.createElement("div"); note.className="note";
-      note.textContent="Attribute Panel: choose which columns appear on the right. (Saved per view mode.)";
-      panel.appendChild(note);
-    }
+      row.appendChild(handle);
+      row.appendChild(lbl);
+      row.appendChild(rm);
+
+      row.addEventListener("dragstart", (e)=>{
+        dragIndex = i;
+        row.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+      });
+      row.addEventListener("dragend", ()=>{
+        dragIndex = -1;
+        row.classList.remove("dragging");
+        list.querySelectorAll(".drag-over").forEach(el=>el.classList.remove("drag-over"));
+      });
+      row.addEventListener("dragover", (e)=>{
+        e.preventDefault();
+        row.classList.add("drag-over");
+      });
+      row.addEventListener("dragleave", ()=>{
+        row.classList.remove("drag-over");
+      });
+      row.addEventListener("drop", (e)=>{
+        e.preventDefault();
+        row.classList.remove("drag-over");
+        const to = i;
+        if(dragIndex < 0 || dragIndex === to) return;
+        const arr = SIDE_COLS.slice();
+        const moved = arr.splice(dragIndex, 1)[0];
+        arr.splice(to, 0, moved);
+        SIDE_COLS = arr;
+        saveSideCols();
+        renderSelected();
+        updateAttributePanel();
+      });
+
+      list.appendChild(row);
+    });
+  }
+  renderSelected();
+
+  const hr = document.createElement("div");
+  hr.className = "note";
+  hr.textContent = "Available fields:";
+  panel.appendChild(hr);
+
+  const chosen = new Set(SIDE_COLS);
+  HEADERS.forEach((hName)=>{
+    const row2 = document.createElement("div");
+    row2.className = "panelRow";
+
+    const lbl2 = document.createElement("span");
+    lbl2.className = "label";
+    lbl2.textContent = hName;
+
+    const btn = document.createElement("button");
+    btn.className = "togglebtn";
+    const isOn = chosen.has(hName);
+    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+    btn.title = (isOn ? "Remove" : "Add") + " to Attribute Panel";
+
+    btn.addEventListener("click", ()=>{
+      const now = btn.getAttribute("aria-pressed")!=="true";
+      btn.setAttribute("aria-pressed", now?"true":"false");
+      if(now){
+        chosen.add(hName);
+        SIDE_COLS.push(hName);
+      } else {
+        chosen.delete(hName);
+        SIDE_COLS = SIDE_COLS.filter(n => n !== hName);
+      }
+      saveSideCols();
+      renderSelected();
+      updateAttributePanel();
+    });
+
+    row2.appendChild(lbl2);
+    row2.appendChild(btn);
+    panel.appendChild(row2);
+  });
+}
     (function setupSideColsUIOnce(){
       const btn=document.getElementById("sideColsBtn"); const panel=document.getElementById("sideColsPanel");
       btn.addEventListener("click",(e)=>{ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
@@ -809,31 +912,30 @@
     function download(name,text,mime){ const blob=new Blob([text],{type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
 
     function exportToPDF(headers, rows, title){
-    const style = `
-      <style>
-        body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}
-        h1{font-size:18px;margin:0 0 12px 0}
-        table{width:100%;border-collapse:collapse}
-        th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;}
-        /* ONLY CHANGE: prevent header text from wrapping in PDF */
-        thead th{background:#f2f4f7;white-space:nowrap}
-        .meta{color:#555;font-size:11px;margin:8px 0 16px 0}
-        @media print{ body{margin:0;} }
-      </style>`;
-    const headRow = "<tr>"+headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")+"</tr>";
-    const bodyRows = rows.map(r=>"<tr>"+r.map(v=>`<td>${escapeHtml(v ?? "")}</td>`).join("")+"</tr>").join("");
-    const html = `
-      <!doctype html><html><head><meta charset="utf-8">${style}<title>${escapeHtml(title||"Export")}</title></head>
-      <body>
-        <h1>${escapeHtml(title||"Export")}</h1>
-        <div class="meta">Generated: ${new Date().toLocaleString()}</div>
-        <table><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table>
-        <script>window.onload=()=>{try{window.print();}catch(e){}}<\/script>
-      </body></html>`;
-    const w=window.open("", "_blank");
-    if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; }
-    w.document.open(); w.document.write(html); w.document.close();
-  }
+      const style = `
+        <style>
+          body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}
+          h1{font-size:18px;margin:0 0 12px 0}
+          table{width:100%;border-collapse:collapse}
+          th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;}
+          thead th{background:#f2f4f7;white-space:nowrap}
+          .meta{color:#555;font-size:11px;margin:8px 0 16px 0}
+          @media print{ body{margin:0;} }
+        </style>`;
+      const headRow = "<tr>"+headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")+"</tr>";
+      const bodyRows = rows.map(r=>"<tr>"+r.map(v=>`<td>${escapeHtml(v ?? "")}</td>`).join("")+"</tr>").join("");
+      const html = `
+        <!doctype html><html><head><meta charset="utf-8">${style}<title>${escapeHtml(title||"Export")}</title></head>
+        <body>
+          <h1>${escapeHtml(title||"Export")}</h1>
+          <div class="meta">Generated: ${new Date().toLocaleString()}</div>
+          <table><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table>
+          <script>window.onload=()=>{try{window.print();}catch(e){}}<\/script>
+        </body></html>`;
+      const w=window.open("", "_blank");
+      if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; }
+      w.document.open(); w.document.write(html); w.document.close();
+    }
     function escapeHtml(x){ return String(x).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
 
     // ---- Export (from panel) ----
