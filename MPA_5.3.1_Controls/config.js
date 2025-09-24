@@ -4,9 +4,9 @@ window.DAV_CONFIG = {
     type: "github",
     owner: "sakerk",
     repo: "Security-Governance-Framework",
-    branch: "main",                  // will auto-fallback to "master" if needed
-    dataDir: "MPA_5.3.1_Controls"    // this folder (recursive)
+    branch: "main",
+    dataDir: "MPA_5.3.1_Controls"  // this folder (recursive)
   },
   permissions: { write: true },
-  ui: { startMode: "md" }            // or "json"
+  ui: { startMode: "md" } // or "json"
 };
