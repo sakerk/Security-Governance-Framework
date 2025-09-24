@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Data Agnostic Viewer (DAV)</title>
 
-<!-- External config (optional). If present, must define window.DAV_CONFIG -->
+<!-- Optional: if present, must define window.DAV_CONFIG -->
 <script src="config.js" defer></script>
 
 <style>
@@ -46,7 +46,6 @@
   th.selCol,td.selCol{width:44px;min-width:44px;max-width:44px;text-align:center}
   input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
 
-  th{position:sticky;top:0;background:#0f172a}
   th .headerInner{position:relative;display:flex;gap:6px;align-items:center;padding-right:10px;cursor:pointer}
   .sortIndicator{font-size:12px;color:#9aa6b2}
   .resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;user-select:none;
@@ -91,32 +90,11 @@
   .seg button{border:0;background:#0f213c;color:#dbeafe;padding:8px 12px;cursor:pointer}
   .seg button.active{background:#13305a}
 
-  .selectedListTitle{font-weight:600;margin:4px 2px 6px 2px;font-size:13px;color:#cbd5e1}
-  .selectedList{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-  .selectedItem{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px dashed #2a3a55;border-radius:8px;background:#0e1a30}
-  .drag{width:16px;height:16px;opacity:.7}
-  .selectedItem .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
   @media (max-width:900px){
     .title{display:none}
     .search{flex:1;min-width:0;width:auto}
     .side{display:none}.gutter{display:none}
   }
-
-  .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
-  .modalBackdrop.open{display:flex}
-  .modal{width:min(900px,92vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-  .modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
-  .modal h2{margin:0;font-size:16px}
-  .modal .content{padding:14px 16px}
-  .modal .grid{display:grid;grid-template-columns:200px 1fr;gap:10px 14px;align-items:start}
-  .modal label{color:var(--muted);font-size:13px;padding-top:10px}
-  .modal input,.modal textarea,.modal select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263241;background:#0b1220;color:#e6edf3}
-  .modal footer{display:flex;gap:10px;justify-content:flex-end;padding:14px 16px;border-top:1px solid var(--line)}
-  .help{color:var(--muted);font-size:12px;margin-top:8px}
-  .msg{font-size:13px;margin-right:auto}
-  .msg.ok{color:var(--ok)} .msg.err{color:var(--danger)}
-  @media (max-width:900px){ .modal .grid{grid-template-columns:1fr} .modal label{padding-top:0} }
 </style>
 </head>
 <body>
@@ -139,23 +117,6 @@
     </div>
 
     <div class="controls">
-      <div class="sideFieldsWrap">
-        <button id="sideColsBtn" class="iconbtn" title="Attribute Fields" aria-haspopup="true" aria-expanded="false">
-          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3a.75.75 0 0 1 0-1.5h6.5a.75.75 0 0 1 0 1.5h-6.5ZM2 4.75c0-.414.336-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 2 4.75Zm0 7.5c0-.414.336-.75.75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 2 12.25Zm11.25-4.5a.75.75 0 0 0 0-1.5H7.75a.75.75 0 0 0 0 1.5h5.5Z"/></svg>
-        </button>
-        <div id="sideColsPanel" class="colsPanel" role="dialog" aria-label="Choose & order fields for Attribute Panel"></div>
-      </div>
-
-      <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
-        <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
-      </button>
-      <button id="editBtn" class="iconbtn" title="Edit selected row" aria-label="Edit selected row" disabled>
-        <svg class="icon" viewBox="0 0 16 16"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.475 2.475l-7.7 7.7a1.75 1.75 0 0 1-.74.436l-3.023.887a.5.5 0 0 1-.62-.62l.887-3.024a1.75 1.75 0 0 1 .436-.739l7.7-7.7Zm.53 3.005-1.975-1.975-7.43 7.43a.25.25 0 0 0-.062.106l-.66 2.25 2.25-.66a.25.25 0 0 0 .106-.062l7.43-7.43Z"/></svg>
-      </button>
-      <button id="copyBtn" class="iconbtn" title="Copy (uses chosen export format)" aria-label="Copy (uses chosen export format)" disabled>
-        <svg class="icon" viewBox="0 0 16 16"><path d="M3.75 2A1.75 1.75 0 0 0 2 3.75v7.5C2 12.216 2.784 13 3.75 13h5.5A1.75 1.75 0 0 0 11 11.25v-7.5C11 2.784 10.216 2 9.25 2h-5.5Zm0 1.5h5.5a.25.25 0 0 1 .25.25v7.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25v-7.5a.25.25 0 0 1 .25-.25ZM13 4.75a.75.75 0 0 1 1.5 0v7.5A2.75 2.75 0 0 1 11.75 15h-7.5a.75.75 0 0 1 0-1.5h7.5c.69 0 1.25-.56 1.25-1.25v-7.5Z"/></svg>
-      </button>
-
       <div class="exportWrap">
         <button id="exportBtn" class="iconbtn" title="Export">
           <svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>
@@ -188,42 +149,21 @@
   </div>
 </div>
 
-<!-- Add/Edit Modal (UI kept; save/write logic omitted here for brevity) -->
-<div id="addModal" class="modalBackdrop" aria-hidden="true" role="dialog" aria-modal="true">
-  <div class="modal" role="document">
-    <header>
-      <h2 id="formTitle">Add Row</h2>
-      <button id="addClose" class="iconbtn" aria-label="Close">
-        <svg class="icon" viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 0 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 0 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 1 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z"/></svg>
-      </button>
-    </header>
-    <div class="content">
-      <form id="addForm"><div id="addGrid" class="grid"></div><p class="help">All fields are optional.</p></form>
-    </div>
-    <footer>
-      <div id="addMsg" class="msg" aria-live="polite"></div>
-      <button id="addSave" class="iconbtn" title="Save">
-        <svg class="icon" viewBox="0 0 16 16"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25V5.06c0-.464-.184-.909-.513-1.237L12.176 1.51A1.75 1.75 0 0 0 10.94 1H2.75ZM10 2.5h.94c.2 0 .39.079.53.22l2.06 2.06V12.25a.25.25 0 0 1-.25.25H2.75a.25.25 0 0 1-.25-.25v-8.5a.25.25 0 0 1 .25-.25H10V6a1 1 0 1 0 2 0V2.5Z"/></svg>
-      </button>
-    </footer>
-  </div>
-</div>
-
 <script>
-/* ---------- Config ---------- */
+/* ---------------- Config & autodetect ---------------- */
 var CFG = {};
 var SRC = {};
 var ACTIVE_BRANCH = "main";
 
 function autoDetectFromLocation(){
-  var host = location.hostname;                         // e.g., sakerk.github.io
+  var host = location.hostname; // e.g., sakerk.github.io
   var owner = host.slice(-10)===".github.io" ? host.replace(".github.io","") : "";
-  // IMPORTANT FIX: remove empty segments properly
-  var parts = location.pathname.replace(/\/index\.html$/,"").replace(/\/$/,"").split("/")
-              .filter(function(s){ return s && s.trim() !== ""; });
-  // e.g., [ "Security-Governance-Framework", "MPA_5.3.1_Controls" ]
-  var repo  = parts[0] || "";
-  var dataDir = parts.slice(1).join("/");               // "MPA_5.3.1_Controls"
+  var path = location.pathname.replace(/\/index\.html$/,"").replace(/\/$/,"");
+  var parts = path.split("/");
+  var clean = [];
+  for (var i=0;i<parts.length;i++){ if(parts[i] && parts[i].trim()!=="") clean.push(parts[i]); }
+  var repo  = clean[0] || "";
+  var dataDir = clean.slice(1).join("/");
   if(owner && repo){
     return {
       title: document.title || "DAV",
@@ -248,29 +188,31 @@ function resolveConfigSync(){
   var t = document.getElementById("pageTitle"); if(t) t.textContent = CFG.title || "DAV";
 }
 
-/* --------------------- State --------------------- */
+/* ---------------- Persistent state ---------------- */
 var GH_TOKEN  = localStorage.getItem("ghToken") || "";
-var VIEW_MODE = localStorage.getItem("viewMode") || ((CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md");
+var VIEW_MODE = localStorage.getItem("viewMode") || "md";
 var EXPORT_FMT = localStorage.getItem("dav:exportFmt") || "md";
-function CAN_WRITE(){ return !!(CFG.permissions && CFG.permissions.write && SRC.type==="github"); }
 
+function CAN_WRITE(){ return !!(CFG.permissions && CFG.permissions.write && SRC.type==="github"); }
 function VIS_KEY(mode){ return "dav:colVisible:"+mode; }
 function WIDTH_KEY(mode){ return "dav:colWidths:"+mode; }
+function SIDE_COLS_KEY(mode){ return "dav:sideCols:"+mode; }
 var SIDE_VISIBLE_KEY = "dav:sideVisible";
-function SIDE_COLS_KEY_FN(mode){ return "dav:sideCols:"+mode; }
 
+/* ---------------- Runtime state ---------------- */
 var HEADERS=[], ROWS=[], FILES=[];
-var SELECTED = new Set();
 var COL_VISIBLE=[], COL_WIDTHS=[];
+var FILTERS=[];
+var SELECTED=new Set();
 var INDEX_ROWS=[];
 var SORT_COL=-1, SORT_DIR=1;
-var FILTERS = [];
-var HOVER_INDEX = -1;
-var SIDE_COLS = [];
+var HOVER_INDEX=-1;
+var SIDE_COLS=[];
 
-/* --------------------- GitHub helpers --------------------- */
+/* ---------------- GitHub helpers ---------------- */
 function ghContentsUrl(dir){
-  return "https://api.github.com/repos/"+encodeURIComponent(SRC.owner)+"/"+encodeURIComponent(SRC.repo)+"/contents/"+encodeURIComponent(dir||"")+"?ref="+encodeURIComponent(ACTIVE_BRANCH);
+  var d = dir || "";
+  return "https://api.github.com/repos/"+encodeURIComponent(SRC.owner)+"/"+encodeURIComponent(SRC.repo)+"/contents/"+encodeURIComponent(d)+"?ref="+encodeURIComponent(ACTIVE_BRANCH);
 }
 function ghRawUrl(path){ return "https://raw.githubusercontent.com/"+SRC.owner+"/"+SRC.repo+"/"+ACTIVE_BRANCH+"/"+path; }
 
@@ -284,7 +226,7 @@ async function ghList(dir){
       var altUrl = url.replace(/ref=[^&]+/, "ref="+encodeURIComponent(alt));
       var res2 = await fetch(altUrl);
       if(!res2.ok && GH_TOKEN){ res2 = await fetch(altUrl, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
-      if(res2.ok){ ACTIVE_BRANCH = alt; console.warn("Branch fallback to", ACTIVE_BRANCH); return res2.json(); }
+      if(res2.ok){ ACTIVE_BRANCH = alt; return res2.json(); }
     }
     throw new Error("GitHub list error "+res.status+" at "+url);
   }
@@ -310,7 +252,7 @@ async function fetchText(url){
   return res.text();
 }
 
-/* --------------------- Parsing/cleanup helpers (unchanged) --------------------- */
+/* ---------------- Parsing & utilities ---------------- */
 function splitCells(line){
   var s=line.trim(); s=s.replace(/^\|/,"").replace(/\|$/,"");
   var parts=[]; var cur=""; var esc=false;
@@ -332,8 +274,8 @@ function parseFirstTable(md){
       for(var j=i+2;j<lines.length;j++){
         var ln=lines[j]; if(!/^\s*\|.*\|\s*$/.test(ln)) break;
         var cells=splitCells(ln);
-        var allEmpty=true; for(var c=0;c<cells.length;c++){ if(cells[c].trim()!==""){allEmpty=false;break;} }
-        if(allEmpty) continue;
+        var empty=true; for(var c=0;c<cells.length;c++){ if(cells[c].trim()!==""){empty=false;break;} }
+        if(empty) continue;
         rows.push(cells);
       }
       return { headers: headers, rows: rows };
@@ -346,75 +288,106 @@ function cleanBulletLines(text){
   if(text==null) return "";
   var raw = String(text);
   raw = raw.replace(/<br\s*\/?>/gi, "\n").replace(/<\/?[^>]+>/g, "").replace(/&nbsp;/gi, " ").replace(/\r/g, "");
-  var lines = raw.split(/\n+/).map(function(s){ return s.trim(); }).filter(function(s){return !!s;});
-  if(lines.length<=1) return raw.trim();
-  var cleaned = lines.map(function(l){
-    return l.replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,"");
-  });
-  return cleaned.map(function(l,i){ return (i+1)+". "+l; }).join("\n");
+  var lines = raw.split(/\n+/);
+  var out = [];
+  for(var i=0;i<lines.length;i++){
+    var s = (lines[i]||"").trim();
+    if(!s) continue;
+    s = s.replace(/^[-*•–—]\s+/, "")
+         .replace(/^\d+[\.\)]\s+/, "")
+         .replace(/^\(\d+\)\s+/, "")
+         .replace(/^- \[[ xX]\]\s+/, "");
+    out.push(s);
+  }
+  if(out.length<=1) return raw.trim();
+  var numbered=[];
+  for(var j=0;j<out.length;j++){ numbered.push((j+1)+". "+out[j]); }
+  return numbered.join("\n");
 }
 function flattenJson(obj){
   var out={};
-  Object.keys(obj||{}).forEach(function(k){
+  var keys = Object.keys(obj||{});
+  for(var i=0;i<keys.length;i++){
+    var k = keys[i];
     var v = obj[k];
     if(isObj(v)){
-      if(String(k).toLowerCase() === "data"){
-        Object.keys(v).forEach(function(k2){
+      if(String(k).toLowerCase()==="data"){
+        var keys2 = Object.keys(v);
+        for(var j=0;j<keys2.length;j++){
+          var k2 = keys2[j];
           var v2 = v[k2];
-          out[k2] = isObj(v2) ? JSON.stringify(v2) : Array.isArray(v2) ? cleanBulletLines(v2.join("\n")) : cleanBulletLines(v2);
-        });
+          if(isObj(v2)) out[k2] = JSON.stringify(v2);
+          else if(Array.isArray(v2)) out[k2] = cleanBulletLines(v2.join("\n"));
+          else out[k2] = cleanBulletLines(v2);
+        }
       } else {
-        Object.keys(v).forEach(function(k2){
-          var v2 = v[k2];
-          out[k+"."+k2] = isObj(v2) ? JSON.stringify(v2) : Array.isArray(v2) ? cleanBulletLines(v2.join("\n")) : cleanBulletLines(v2);
-        });
+        var keys3 = Object.keys(v);
+        for(var m=0;m<keys3.length;m++){
+          var k3 = keys3[m];
+          var v3 = v[k3];
+          var key = k+"."+k3;
+          if(isObj(v3)) out[key] = JSON.stringify(v3);
+          else if(Array.isArray(v3)) out[key] = cleanBulletLines(v3.join("\n"));
+          else out[key] = cleanBulletLines(v3);
+        }
       }
     } else if(Array.isArray(v)){
       out[k] = cleanBulletLines(v.join("\n"));
     } else {
       out[k] = cleanBulletLines(v);
     }
-  });
+  }
   return out;
 }
 function rowFromFlatGrowHeaders(flat){
   if(HEADERS.length===0){
     HEADERS = Object.keys(flat);
-    COL_VISIBLE = HEADERS.map(function(){ return true; });
-    COL_WIDTHS  = HEADERS.map(function(){ return null; });
-    return HEADERS.map(function(h){ return (flat[h] != null ? flat[h] : ""); });
+    COL_VISIBLE = [];
+    COL_WIDTHS  = [];
+    for(var i=0;i<HEADERS.length;i++){ COL_VISIBLE.push(true); COL_WIDTHS.push(null); }
+    var row=[];
+    for(var j=0;j<HEADERS.length;j++){ row.push(flat[HEADERS[j]]!=null?flat[HEADERS[j]]:""); }
+    return row;
   }
   var oldHeaders = HEADERS.slice();
-  Object.keys(flat).forEach(function(k){ if(HEADERS.indexOf(k)===-1) HEADERS.push(k); });
+  var keys = Object.keys(flat);
+  for(var k=0;k<keys.length;k++){ if(HEADERS.indexOf(keys[k])===-1) HEADERS.push(keys[k]); }
   if(HEADERS.length !== oldHeaders.length){
-    ROWS = ROWS.map(function(r){
-      var map={};
-      for(var i=0;i<oldHeaders.length;i++){ var h=oldHeaders[i]; map[h]= (r[i] != null ? r[i] : ""); }
-      return HEADERS.map(function(h){ return (map[h] != null ? map[h] : ""); });
-    });
+    var newRows=[];
+    for(var r=0;r<ROWS.length;r++){
+      var map={}, h;
+      for(var a=0;a<oldHeaders.length;a++){ h=oldHeaders[a]; map[h]= (ROWS[r][a]!=null?ROWS[r][a]:""); }
+      var row2=[];
+      for(var b=0;b<HEADERS.length;b++){ h=HEADERS[b]; row2.push(map[h]!=null?map[h]:""); }
+      newRows.push(row2);
+    }
+    ROWS = newRows;
     while(COL_VISIBLE.length < HEADERS.length) COL_VISIBLE.push(true);
     while(COL_WIDTHS.length  < HEADERS.length) COL_WIDTHS.push(null);
   }
-  return HEADERS.map(function(h){ return (flat[h] != null ? flat[h] : ""); });
+  var rowOut=[];
+  for(var z=0;z<HEADERS.length;z++){ rowOut.push(flat[HEADERS[z]]!=null?flat[HEADERS[z]]:""); }
+  return rowOut;
 }
-function hideDefaultsIfFresh(){
-  var saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
-  if(saved) return;
-  COL_VISIBLE = HEADERS.map(function(){ return true; });
-}
+function escapeHtml(x){ return String(x).replace(/[&<>"]/g, function(s){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]; }); }
 
-/* --------------------- Attribute Panel + Columns UI (unchanged) --------------------- */
+/* ---------------- Attribute Panel ---------------- */
 function restoreSideCols(){
-  var saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
+  var saved = localStorage.getItem(SIDE_COLS_KEY(VIEW_MODE));
   if(saved){
     try{
       var arr = JSON.parse(saved);
-      if(Array.isArray(arr)) { SIDE_COLS = arr.filter(function(h){ return HEADERS.indexOf(h)!==-1; }); return; }
+      if(arr && arr.length){ 
+        var filtered=[];
+        for(var i=0;i<arr.length;i++){ if(HEADERS.indexOf(arr[i])!==-1) filtered.push(arr[i]); }
+        SIDE_COLS = filtered;
+        return;
+      }
     }catch(e){}
   }
   SIDE_COLS = [];
 }
-function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch(e){} }
+function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch(e){} }
 
 function updateAttributePanel(){
   var container = document.getElementById("attrContainer");
@@ -454,131 +427,328 @@ function updateAttributePanel(){
     title.textContent = name;
     sec.appendChild(title);
 
-    var lines = String(raw).split(/\n+/).map(function(s){ return s.trim(); }).filter(function(s){return !!s;});
-    if(lines.length > 1){
+    var parts = String(raw).split(/\n+/);
+    if(parts.length > 1){
       var ol = document.createElement("ol");
       ol.className = "attrlist";
-      lines.forEach(function(line){
-        var clean = line.replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,"");
+      for(var p=0;p<parts.length;p++){
+        var clean = parts[p].replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,"").trim();
+        if(!clean) continue;
         var li = document.createElement("li");
         li.textContent = clean;
         ol.appendChild(li);
-      });
+      }
       sec.appendChild(ol);
     } else {
-      var p = document.createElement("div");
-      p.textContent = raw;
-      sec.appendChild(p);
+      var div = document.createElement("div");
+      div.textContent = raw;
+      sec.appendChild(div);
     }
     container.appendChild(sec);
   }
 }
 
+/* Side fields chooser (toggle + reorder) */
 function buildSideColsPanel(){
   var panel=document.getElementById("sideColsPanel");
   panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
 
-  var selTitle = document.createElement("div");
-  selTitle.className = "selectedListTitle";
-  selTitle.textContent = "Selected (drag to reorder):";
-  panel.appendChild(selTitle);
+  var title = document.createElement("div");
+  title.style.fontWeight = "600";
+  title.style.marginBottom = "6px";
+  title.textContent = "Attribute Panel fields (drag to reorder):";
+  panel.appendChild(title);
 
-  var selList = document.createElement("div");
-  selList.className = "selectedList";
-  panel.appendChild(selList);
+  var list = document.createElement("div");
+  panel.appendChild(list);
 
   var dragFrom = -1;
-  function rebuildSelected(){
-    selList.innerHTML = "";
+  function rebuild(){
+    list.innerHTML="";
     for(var i=0;i<SIDE_COLS.length;i++){
       (function(iLocal){
-        var name = SIDE_COLS[iLocal];
-        var item = document.createElement("div");
-        item.className = "selectedItem";
-        item.setAttribute("draggable","true");
-        item.dataset.index = String(iLocal);
-
-        var drag = document.createElementNS("http://www.w3.org/2000/svg","svg");
-        drag.setAttribute("viewBox","0 0 16 16");
-        drag.classList.add("drag");
-        drag.innerHTML = '<path fill="currentColor" d="M5 3h2v2H5V3Zm4 0h2v2H9V3ZM5 7h2v2H5V7Zm4 0h2v2H9V7ZM5 11h2v2H5v-2Zm4 0h2v2H9v-2Z"/>';
-        item.appendChild(drag);
-
-        var label = document.createElement("div");
-        label.className = "name";
-        label.textContent = name;
-        item.appendChild(label);
-
-        item.addEventListener("dragstart", function(){ dragFrom = iLocal; });
-        item.addEventListener("dragover", function(e){ e.preventDefault(); });
-        item.addEventListener("drop", function(e){
-          e.preventDefault();
-          var to = iLocal;
-          if(dragFrom===-1 || dragFrom===to) return;
-          var arr = SIDE_COLS.slice();
-          var m = arr.splice(dragFrom,1)[0];
-          arr.splice(to,0,m);
-          SIDE_COLS = arr;
-          saveSideCols();
-          rebuildSelected();
-          updateAttributePanel();
+        var row=document.createElement("div"); row.className="panelRow"; row.setAttribute("draggable","true");
+        var lbl=document.createElement("span"); lbl.className="label"; lbl.textContent=SIDE_COLS[iLocal];
+        var rm=document.createElement("button"); rm.className="togglebtn"; rm.setAttribute("aria-pressed","true"); rm.title="Remove";
+        rm.addEventListener("click", function(){
+          var name = SIDE_COLS[iLocal];
+          var next=[]; for(var k=0;k<SIDE_COLS.length;k++){ if(SIDE_COLS[k]!==name) next.push(SIDE_COLS[k]); }
+          SIDE_COLS = next; saveSideCols(); rebuild(); updateAttributePanel();
         });
-
-        selList.appendChild(item);
+        row.appendChild(lbl); row.appendChild(rm);
+        row.addEventListener("dragstart", function(){ dragFrom=iLocal; });
+        row.addEventListener("dragover", function(e){ e.preventDefault(); });
+        row.addEventListener("drop", function(e){
+          e.preventDefault();
+          var to=iLocal;
+          if(dragFrom<0 || dragFrom===to) return;
+          var arr=SIDE_COLS.slice();
+          var m=arr.splice(dragFrom,1)[0];
+          arr.splice(to,0,m);
+          SIDE_COLS=arr; saveSideCols(); rebuild(); updateAttributePanel();
+        });
+        list.appendChild(row);
       })(i);
     }
   }
-  rebuildSelected();
+  rebuild();
 
-  var divider = document.createElement("div");
-  divider.className = "selectedListTitle";
-  divider.textContent = "Available fields:";
-  panel.appendChild(divider);
+  var hr=document.createElement("div"); hr.className="note"; hr.textContent="Available fields:";
+  panel.appendChild(hr);
 
-  var chosen = new Set(SIDE_COLS);
-  HEADERS.forEach(function(h){
-    var row=document.createElement("div"); row.className="panelRow";
-    var label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
-    var btn=document.createElement("button"); btn.className="togglebtn";
-    var isOn = chosen.has(h);
-    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
-    btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
-    btn.addEventListener("click", function(){
-      var now = btn.getAttribute("aria-pressed")!=="true";
-      btn.setAttribute("aria-pressed", now?"true":"false");
-      if(now){
-        chosen.add(h);
-        SIDE_COLS.push(h);
-      } else {
-        chosen.delete(h);
-        SIDE_COLS = SIDE_COLS.filter(function(x){ return x!==h; });
+  var chosen=new Set(SIDE_COLS);
+  for(var h=0;h<HEADERS.length;h++){
+    (function(hName){
+      var row2=document.createElement("div"); row2.className="panelRow";
+      var lbl2=document.createElement("span"); lbl2.className="label"; lbl2.textContent=hName;
+      var btn=document.createElement("button"); btn.className="togglebtn";
+      var isOn = chosen.has(hName);
+      btn.setAttribute("aria-pressed", isOn?"true":"false");
+      btn.title = (isOn?"Remove":"Add")+" to Attribute Panel";
+      btn.addEventListener("click", function(){
+        var now = btn.getAttribute("aria-pressed")!=="true";
+        btn.setAttribute("aria-pressed", now?"true":"false");
+        if(now){ chosen.add(hName); SIDE_COLS.push(hName); }
+        else { chosen.delete(hName); var tmp=[]; SIDE_COLS.forEach(function(n){ if(n!==hName) tmp.push(n); }); SIDE_COLS=tmp; }
+        saveSideCols(); rebuild(); updateAttributePanel();
+      });
+      row2.appendChild(lbl2); row2.appendChild(btn); panel.appendChild(row2);
+    })(HEADERS[h]);
+  }
+}
+
+/* ---------------- Table rendering & UI ---------------- */
+function renderTable(headers, rows){
+  var tbl = document.getElementById("sheet");
+  tbl.innerHTML="";
+  var colgroup=document.createElement("colgroup"); colgroup.id="colgroup";
+  var selCol=document.createElement("col"); selCol.className="col-sel"; colgroup.appendChild(selCol);
+  tbl.appendChild(colgroup);
+
+  var thead=document.createElement("thead");
+  var trh=document.createElement("tr");
+  var thSel=document.createElement("th"); thSel.className="selCol";
+  var master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
+  master.addEventListener("change",function(){ toggleSelectVisible(master.checked,true); });
+  thSel.appendChild(master); trh.appendChild(thSel);
+
+  for(var i=0;i<headers.length;i++){
+    (function(iLocal){
+      var h=headers[iLocal] || ("Column "+(iLocal+1));
+      var th=document.createElement("th"); th.draggable=true; th.dataset.col=String(iLocal);
+      var span=document.createElement("span"); span.className="headerInner"; span.textContent=h;
+      span.addEventListener("click",function(){ onSortClick(iLocal); }); th.appendChild(span);
+      var si=document.createElement("span"); si.className="sortIndicator"; si.textContent=(SORT_COL===iLocal?(SORT_DIR===1?"▲":"▼"):""); span.appendChild(si);
+      var handle=document.createElement("div"); handle.className="resizer";
+      handle.addEventListener("mousedown",function(ev){ startResize(iLocal,ev); });
+      handle.addEventListener("dblclick",function(){ autoFitColumn(iLocal); });
+      th.appendChild(handle);
+      th.addEventListener("dragstart",function(ev){ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",iLocal); });
+      th.addEventListener("dragend",function(){ th.classList.remove("dragging"); });
+      th.addEventListener("dragover",function(ev){ ev.preventDefault(); });
+      th.addEventListener("drop",function(ev){ ev.preventDefault(); var from=parseInt(ev.dataTransfer.getData("text/plain"),10); var to=iLocal; if(isFinite(from)&&from!==to) reorderColumns(from,to); });
+      trh.appendChild(th);
+      var c=document.createElement("col"); c.dataset.col=String(iLocal); colgroup.appendChild(c);
+    })(i);
+  }
+  thead.appendChild(trh);
+
+  var trf=document.createElement("tr"); trf.className="filters";
+  var thfSel=document.createElement("th"); thfSel.className="selCol"; trf.appendChild(thfSel);
+  FILTERS = [];
+  for(var j=0;j<headers.length;j++){
+    (function(jLocal){
+      var th=document.createElement("th"); th.dataset.col=String(jLocal);
+      var inp=document.createElement("input"); inp.type="search"; inp.placeholder="Filter…";
+      inp.addEventListener("input",function(){ FILTERS[jLocal]=inp.value.trim().toLowerCase(); applySearchAndFilters(); });
+      th.appendChild(inp); trf.appendChild(th);
+      FILTERS.push("");
+    })(j);
+  }
+  thead.appendChild(trf);
+
+  var tbody=document.createElement("tbody");
+  for(var r=0;r<rows.length;r++){
+    (function(idx){
+      var tr=document.createElement("tr"); tr.dataset.index=String(idx);
+      tr.addEventListener("click",function(e){ if(e.target && e.target.tagName && e.target.tagName.toLowerCase()==="input") return; var cb=tr.querySelector('td.selCol input'); var multi=e.shiftKey; var next=!cb.checked; setRowSelection(idx, next, multi); });
+      tr.addEventListener("mouseenter",function(){ HOVER_INDEX=idx; updateAttributePanel(); });
+      tr.addEventListener("mouseleave",function(){ HOVER_INDEX=-1; updateAttributePanel(); });
+
+      var tdSel=document.createElement("td"); tdSel.className="selCol";
+      var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=SELECTED.has(idx);
+      cb.addEventListener("click",function(e){ e.stopPropagation(); setRowSelection(idx, e.target.checked, e.shiftKey); });
+      tdSel.appendChild(cb); tr.appendChild(tdSel);
+
+      for(var c=0;c<rows[idx].length;c++){
+        var td=document.createElement("td"); td.dataset.col=String(c); td.textContent=(rows[idx][c]==null?"":rows[idx][c]); tr.appendChild(td);
       }
-      saveSideCols(); updateAttributePanel(); rebuildSelected();
-      btn.title = (now ? "Remove from" : "Add to") + " Attribute Panel";
-    });
-    row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
-  });
 
+      if(SELECTED.has(idx)) tr.classList.add("selected");
+      tbody.appendChild(tr);
+    })(r);
+  }
+  tbl.appendChild(thead); tbl.appendChild(tbody);
+
+  restoreColState();
+  restoreSideCols();
+
+  applyColumnVisibility(true);
+  applyColumnWidths();
+  buildIndexRows();
+  applySearchAndFilters();
+  updateCounts();
+  buildColumnsPanel();
+  buildSideColsPanel();
+  buildExportPanel();
+  updateExportUI();
+  updateActionButtons();
+  updateAttributePanel();
+}
+
+/* Column panel */
+function buildColumnsPanel(){
+  var panel=document.getElementById("colsPanel");
+  panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
+  for(var i=0;i<HEADERS.length;i++){
+    (function(iLocal){
+      var h=HEADERS[iLocal] || ("Column "+(iLocal+1));
+      var row=document.createElement("div"); row.className="panelRow";
+      var label=document.createElement("span"); label.className="label"; label.textContent=h;
+      var btn=document.createElement("button"); btn.className="togglebtn";
+      var isOn = COL_VISIBLE[iLocal] !== false;
+      btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+      btn.title = (isOn ? "Hide" : "Show") + " column";
+      btn.addEventListener("click", function(){
+        var now = btn.getAttribute("aria-pressed")!=="true";
+        btn.setAttribute("aria-pressed", now?"true":"false");
+        COL_VISIBLE[iLocal] = now;
+        applyColumnVisibility(true);
+        buildIndexRows(); applySearchAndFilters();
+        btn.title = (now ? "Hide" : "Show") + " column";
+      });
+      row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
+    })(i);
+  }
   var note=document.createElement("div"); note.className="note";
-  note.textContent="Pick which fields show on the right, and drag the selected list to set their order (saved per mode).";
+  note.textContent="Toggle column visibility. Tips: drag header edge to resize (double-click to auto-fit), drag headers to reorder, click header to sort.";
   panel.appendChild(note);
 }
-(function setupSideColsUIOnce(){
-  var btn=document.getElementById("sideColsBtn"); var panel=document.getElementById("sideColsPanel");
+(function setupColumnsUIOnce(){
+  var btn=document.getElementById("colsBtn"); var panel=document.getElementById("colsPanel");
   btn.addEventListener("click",function(e){ e.stopPropagation(); var open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
   document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
 })();
 
-/* --------------------- Table rendering, columns, sort, resize, export (unchanged) --------------------- */
-var COL_VISIBLE=[], COL_WIDTHS=[];
-var FILTERS=[];
-var SORT_COL=-1,SORT_DIR=1;
-var SELECTED=new Set();
-var INDEX_ROWS=[];
+/* Selection / search / sort */
+function setRowSelection(idx, on, multi){
+  if(!multi){
+    var prev = Array.from(SELECTED);
+    SELECTED.clear();
+    for(var p=0;p<prev.length;p++){
+      var trprev = document.querySelector('#sheet tbody tr[data-index="'+prev[p]+'"]');
+      if(trprev){ trprev.classList.remove("selected"); var cbp=trprev.querySelector('td.selCol input'); if(cbp) cbp.checked=false; }
+    }
+  }
+  var tr = document.querySelector('#sheet tbody tr[data-index="'+idx+'"]');
+  if(on){
+    SELECTED.add(idx);
+    if(tr){ tr.classList.add("selected"); var cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=true; }
+  } else {
+    SELECTED.delete(idx);
+    if(tr){ tr.classList.remove("selected"); var cb2=tr.querySelector('td.selCol input'); if(cb2) cb2.checked=false; }
+  }
+  updateCounts(); updateActionButtons(); updateAttributePanel();
+}
+function toggleSelectVisible(on, forceMulti){
+  var visibleRows = Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)"));
+  if(!forceMulti){
+    if(visibleRows.length){ var idx=+visibleRows[0].dataset.index; setRowSelection(idx, true, false); }
+    return;
+  }
+  for(var i=0;i<visibleRows.length;i++){
+    var tr=visibleRows[i]; var idx=+tr.dataset.index;
+    var cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=on;
+    if(on){ SELECTED.add(idx); tr.classList.add("selected"); } else { SELECTED.delete(idx); tr.classList.remove("selected"); }
+  }
+  updateCounts(); updateActionButtons(); updateAttributePanel();
+}
+function updateActionButtons(){
+  var copyBtn = document.getElementById("copyBtn"); // optional (not shown in this trimmed UI)
+  if(copyBtn){ copyBtn.disabled = (SELECTED.size < 1) || (EXPORT_FMT === "pdf"); }
+}
+function updateCounts() {
+  var total = ROWS.length;
+  var visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
+  var sel = SELECTED.size;
+  var el = document.getElementById("count");
+  if (el) el.textContent = (visible === total ? total+" rows" : ("Showing "+visible+" of "+total)) + " • " + sel + " selected";
+}
+function buildIndexRows(){
+  var bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
+  var out=[];
+  for(var i=0;i<bodyRows.length;i++){
+    var tr=bodyRows[i];
+    var tds=tr.querySelectorAll('td[data-col]');
+    var texts=[];
+    for(var j=0;j<tds.length;j++){ texts.push((tds[j].textContent||"").toLowerCase()); }
+    out.push({ tr: tr, texts: texts });
+  }
+  INDEX_ROWS=out;
+}
+function applySearchAndFilters(){
+  var q = document.getElementById("q").value.trim().toLowerCase();
+  var terms = q ? q.split(/\s+/) : [];
+  for(var i=0;i<INDEX_ROWS.length;i++){
+    var pair = INDEX_ROWS[i];
+    var texts = pair.texts;
+    var globalHit = true;
+    for(var t=0;t<terms.length;t++){
+      var hit=false;
+      for(var x=0;x<texts.length;x++){ if(texts[x].indexOf(terms[t])!==-1){ hit=true; break; } }
+      if(!hit){ globalHit=false; break; }
+    }
+    var perColHit = true;
+    for(var c=0;c<FILTERS.length;c++){
+      var f = (FILTERS[c]||"");
+      if(!f) continue;
+      var cell = texts[c] || "";
+      if(cell.indexOf(f)===-1){ perColHit=false; break; }
+    }
+    pair.tr.classList.toggle("hide", !(globalHit && perColHit));
+  }
+  updateCounts();
+}
+(function setupSearchOnce(){
+  var q=document.getElementById("q");
+  var t=null;
+  q.addEventListener("input", function(){ if(t) clearTimeout(t); t=setTimeout(applySearchAndFilters,120); });
+})();
+function onSortClick(i){
+  if(SORT_COL===i) SORT_DIR=-SORT_DIR; else { SORT_COL=i; SORT_DIR=1; }
+  var zipped=[];
+  for(var z=0;z<ROWS.length;z++){ zipped.push({ row: ROWS[z], file: FILES[z] }); }
+  zipped.sort(function(A,B){
+    var va=(A.row[i]!=null?A.row[i]:"").toString().toLowerCase();
+    var vb=(B.row[i]!=null?B.row[i]:"").toString().toLowerCase();
+    if(va<vb) return -1*SORT_DIR; if(va>vb) return 1*SORT_DIR; return 0;
+  });
+  ROWS = []; FILES=[];
+  for(var q=0;q<zipped.length;q++){ ROWS.push(zipped[q].row); FILES.push(zipped[q].file); }
+  SELECTED.clear();
+  renderTable(HEADERS, ROWS);
+}
+function reorderColumns(from,to){
+  function move(arr){ var x=arr.splice(from,1)[0]; arr.splice(to,0,x); }
+  move(HEADERS); move(COL_VISIBLE); move(COL_WIDTHS);
+  // move filters
+  var v = FILTERS.splice(from,1)[0]; FILTERS.splice(to,0,v);
+  // move row cells
+  for(var r=0;r<ROWS.length;r++){ var x=ROWS[r].splice(from,1)[0]; ROWS[r].splice(to,0,x); }
+  renderTable(HEADERS, ROWS);
+}
 
-function buildColumnsPanel(){ /* ... unchanged from previous message ... */ }
-function applyColumnVisibility(saveFlag){ /* ... unchanged ... */ }
-function applyColumnWidths(){ /* ... unchanged ... */ }
+/* Visibility & widths */
 function saveColState(){ try{
   localStorage.setItem(VIS_KEY(VIEW_MODE), JSON.stringify(COL_VISIBLE));
   localStorage.setItem(WIDTH_KEY(VIEW_MODE), JSON.stringify(COL_WIDTHS));
@@ -586,49 +756,191 @@ function saveColState(){ try{
 function restoreColState(){ try{
   var vis=JSON.parse(localStorage.getItem(VIS_KEY(VIEW_MODE))||"null");
   var wds=JSON.parse(localStorage.getItem(WIDTH_KEY(VIEW_MODE))||"null");
-  if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else COL_VISIBLE=HEADERS.map(function(){ return true; });
-  if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else COL_WIDTHS=HEADERS.map(function(){ return null; });
-}catch(e){ COL_VISIBLE=HEADERS.map(function(){ return true; }); COL_WIDTHS=HEADERS.map(function(){ return null; }); } }
-function startResize(i,ev){ /* ... unchanged ... */ }
-function onResizeMove(ev){ /* ... unchanged ... */ }
-function endResize(){ /* ... unchanged ... */ }
-function autoFitColumn(i){ /* ... unchanged ... */ }
+  if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else { COL_VISIBLE=[]; for(var i=0;i<HEADERS.length;i++) COL_VISIBLE.push(true); }
+  if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else { COL_WIDTHS=[]; for(var j=0;j<HEADERS.length;j++) COL_WIDTHS.push(null); }
+}catch(e){ COL_VISIBLE=[]; COL_WIDTHS=[]; for(var k=0;k<HEADERS.length;k++){ COL_VISIBLE.push(true); COL_WIDTHS.push(null); } } }
+function applyColumnVisibility(saveFlag){
+  var ths=document.querySelectorAll("#sheet thead th[data-col]");
+  var tds=document.querySelectorAll("#sheet tbody td[data-col]");
+  var cols=document.querySelectorAll("#colgroup col[data-col]");
+  var filtThs=document.querySelectorAll("#sheet thead tr.filters th[data-col]");
+  for(var i=0;i<ths.length;i++){ var iCol=+ths[i].dataset.col; var hide=(COL_VISIBLE[iCol]===false); ths[i].classList.toggle("hidden-col", hide); }
+  for(var j=0;j<filtThs.length;j++){ var iCol2=+filtThs[j].dataset.col; var hide2=(COL_VISIBLE[iCol2]===false); filtThs[j].classList.toggle("hidden-col", hide2); }
+  for(var k=0;k<tds.length;k++){ var iCol3=+tds[k].dataset.col; var hide3=(COL_VISIBLE[iCol3]===false); tds[k].classList.toggle("hidden-col", hide3); }
+  for(var m=0;m<cols.length;m++){ var iCol4=+cols[m].dataset.col; var hide4=(COL_VISIBLE[iCol4]===false); cols[m].style.width = hide4 ? "0px" : (COL_WIDTHS[iCol4] ? COL_WIDTHS[iCol4]+"px" : ""); }
+  if(saveFlag) saveColState();
+}
+function applyColumnWidths(){
+  var colgroup=document.getElementById("colgroup"); if(!colgroup) return;
+  for(var i=0;i<COL_WIDTHS.length;i++){
+    var col=colgroup.querySelector('col[data-col="'+i+'"]');
+    if(!col){ col=document.createElement("col"); col.dataset.col=String(i); colgroup.appendChild(col); }
+    col.style.width = (COL_VISIBLE[i]===false) ? "0px" : (COL_WIDTHS[i]? COL_WIDTHS[i]+"px" : "");
+  }
+  saveColState();
+}
 
-function renderTable(headers, rows){ /* ... unchanged from previous message ... */ }
-function setRowSelection(idx,on,multi){ /* ... unchanged ... */ }
-function toggleSelectVisible(on,forceMulti){ /* ... unchanged ... */ }
-function updateActionButtons(){ /* ... unchanged ... */ }
-function updateCounts(){ /* ... unchanged ... */ }
-function buildIndexRows(){ /* ... unchanged ... */ }
-function applySearchAndFilters(){ /* ... unchanged ... */ }
-(function setupSearchOnce(){
-  var q=document.getElementById("q");
-  function debounce(fn,ms){ var t; return function(){ clearTimeout(t); t=setTimeout(fn,ms); }; }
-  q.addEventListener("input", debounce(applySearchAndFilters,120));
+/* Column resizing */
+var resizeState=null;
+function startResize(i,ev){
+  ev.preventDefault();
+  var th=document.querySelector('#sheet thead th[data-col="'+i+'"]');
+  var col=document.querySelector('#colgroup col[data-col="'+i+'"]');
+  var startX=ev.clientX;
+  var startW=th.getBoundingClientRect().width;
+  resizeState={i:i,startX:startX,startW:startW,col:col};
+  window.addEventListener("mousemove",onResizeMove);
+  window.addEventListener("mouseup",endResize);
+  document.body.style.cursor="col-resize";
+}
+function onResizeMove(ev){
+  if(!resizeState) return;
+  var i=resizeState.i, startX=resizeState.startX, startW=resizeState.startW, col=resizeState.col;
+  var w=Math.max(60, Math.round(startW+(ev.clientX-startX)));
+  COL_WIDTHS[i]=w;
+  if(col) col.style.width=w+"px";
+}
+function endResize(){
+  window.removeEventListener("mousemove",onResizeMove);
+  window.removeEventListener("mouseup",endResize);
+  document.body.style.cursor="";
+  resizeState=null;
+  saveColState();
+}
+function autoFitColumn(i){
+  var th=document.querySelector('#sheet thead th[data-col="'+i+'"]');
+  var cells=Array.from(document.querySelectorAll('#sheet tbody td[data-col="'+i+'"]'));
+  function measure(el){ return Math.ceil(el.getBoundingClientRect().width); }
+  var maxW=measure(th);
+  for(var c=0;c<cells.length;c++){ maxW=Math.max(maxW, measure(cells[c])); }
+  maxW=Math.min(Math.max(80, maxW+12), 800);
+  COL_WIDTHS[i]=maxW;
+  applyColumnWidths();
+}
+
+/* ---------------- Export ---------------- */
+function buildExportPanel(){
+  var panel = document.getElementById("exportPanel");
+  panel.innerHTML="";
+  panel.addEventListener("click",function(e){ e.stopPropagation(); });
+
+  var formats = [
+    {key:"md",   label:"Markdown (.md)"},
+    {key:"csv",  label:"CSV (.csv)"},
+    {key:"json", label:"JSON (.json)"},
+    {key:"pdf",  label:"PDF (print to PDF)"}
+  ];
+  for(var i=0;i<formats.length;i++){
+    (function(fmt){
+      var row=document.createElement("div"); row.className="panelRow";
+      var label=document.createElement("span"); label.className="label"; label.textContent=fmt.label;
+      var radio=document.createElement("button"); radio.className="radiobtn"; radio.setAttribute("role","menuitemradio");
+      radio.setAttribute("aria-checked", EXPORT_FMT===fmt.key ? "true":"false");
+      radio.title = "Choose "+fmt.label;
+      radio.addEventListener("click", function(){
+        EXPORT_FMT = fmt.key;
+        try{ localStorage.setItem("dav:exportFmt", EXPORT_FMT); }catch(e){}
+        var all=panel.querySelectorAll(".radiobtn");
+        for(var x=0;x<all.length;x++){ all[x].setAttribute("aria-checked","false"); }
+        radio.setAttribute("aria-checked","true");
+        updateExportUI();
+      });
+      row.appendChild(label); row.appendChild(radio); panel.appendChild(row);
+    })(formats[i]);
+  }
+  var footer=document.createElement("div"); footer.className="exportFooter";
+  var go=document.createElement("button"); go.className="iconbtn"; go.title="Export now";
+  go.innerHTML = '<svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>';
+  go.addEventListener("click", function(){ doExport(); panel.classList.remove("open"); });
+  footer.appendChild(go);
+  panel.appendChild(footer);
+
+  var note=document.createElement("div"); note.className="note";
+  note.textContent="Exports honor selection (if any), visible columns, filters, and sort.";
+  panel.appendChild(note);
+}
+(function setupExportUIOnce(){
+  var btn=document.getElementById("exportBtn"); var panel=document.getElementById("exportPanel");
+  btn.addEventListener("click",function(e){ e.stopPropagation(); var open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
 })();
-function onSortClick(i){ /* ... unchanged ... */ }
-function reorderColumns(from,to){ /* ... unchanged ... */ }
-function moveFilters(arr,from,to){ var x=arr.slice(); var v=x.splice(from,1)[0]; x.splice(to,0,v); return x; }
-
-/* Export helpers (unchanged) */
-function visibleCols(){ var idxs=[]; COL_VISIBLE.forEach(function(v,i){ if(v!==false) idxs.push(i); }); return idxs; }
-function filterCols(headers,rows){ var cols=visibleCols(); return { fh: cols.map(function(i){ return headers[i]; }), fr: rows.map(function(r){ return cols.map(function(i){ return r[i]; }); }) }; }
-function toMarkdown(headers,rows,title){ function esc(v){ return (v==null?"":String(v).replace(/\|/g,"\\|")); } var head="| "+headers.map(esc).join(" | ")+" |"; var sep="| "+headers.map(function(){return"---";}).join(" | ")+" |"; var body=rows.map(function(r){return"| "+r.map(esc).join(" | ")+" |";}).join("\n"); return (title?("# "+title+"\n\n"):"")+head+"\n"+sep+"\n"+body+"\n"; }
-function toCSV(headers,rows){ function esc(v){ if(v==null)v=""; v=String(v); if(/[\",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; } var all=[headers].concat(rows); return all.map(function(r){ return r.map(esc).join(","); }).join("\r\n")+"\r\n"; }
-function toJSONArray(headers,rows){ return rows.map(function(r){ var o={}; headers.forEach(function(h,i){ o[h]=(r[i]!=null?r[i]:""); }); return o; }); }
-function download(name,text,mime){ var blob=new Blob([text],{type:mime}); var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
-function escapeHtml(x){ return String(x).replace(/[&<>"]/g, function(s){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]; }); }
-function exportToPDF(headers, rows, title){ var style='<style>body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}h1{font-size:18px;margin:0 0 12px 0}table{width:100%;border-collapse:collapse;table-layout:auto}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}thead th{background:#f2f4f7;white-space:nowrap;}td{white-space:pre-wrap;} .meta{color:#555;font-size:11px;margin:8px 0 16px 0}@media print{ body{margin:0;} }</style>'; var headRow="<tr>"+headers.map(function(h){return"<th>"+escapeHtml(h)+"</th>";}).join("")+"</tr>"; var bodyRows=rows.map(function(r){return"<tr>"+r.map(function(v){return"<td>"+escapeHtml(v!=null?v:"")+"</td>";}).join("")+"</tr>";}).join(""); var html='<!doctype html><html><head><meta charset="utf-8">'+style+'<title>'+escapeHtml(title||"Export")+'</title></head><body><h1>'+escapeHtml(title||"Export")+'</h1><div class="meta">Generated: '+new Date().toLocaleString()+'</div><table><thead>'+headRow+'</thead><tbody>'+bodyRows+'</tbody></table><script>window.onload=function(){try{window.print();}catch(e){}}<\/script></body></html>'; var w=window.open("", "_blank"); if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; } w.document.open(); w.document.write(html); w.document.close(); }
+function updateExportUI(){
+  var btn=document.getElementById("exportBtn");
+  if(btn) btn.title = "Export ("+EXPORT_FMT.toUpperCase()+")";
+}
+function visibleCols(){
+  var idxs=[];
+  for(var i=0;i<COL_VISIBLE.length;i++){ if(COL_VISIBLE[i]!==false) idxs.push(i); }
+  return idxs;
+}
+function filterCols(headers,rows){
+  var cols=visibleCols();
+  var fh=[], fr=[];
+  for(var i=0;i<cols.length;i++){ fh.push(headers[cols[i]]); }
+  for(var r=0;r<rows.length;r++){
+    var rw=[]; for(var c=0;c<cols.length;c++){ rw.push(rows[r][cols[c]]); } fr.push(rw);
+  }
+  return { fh: fh, fr: fr };
+}
+function toMarkdown(headers,rows,title){
+  function esc(v){ return (v==null?"":String(v).replace(/\|/g,"\\|")); }
+  var head="| "+headers.map(esc).join(" | ")+" |";
+  var sep ="| "+headers.map(function(){ return "---"; }).join(" | ")+" |";
+  var body=[];
+  for(var i=0;i<rows.length;i++){ body.push("| "+rows[i].map(esc).join(" | ")+" |"); }
+  return (title?("# "+title+"\n\n"):"")+head+"\n"+sep+"\n"+body.join("\n")+"\n";
+}
+function toCSV(headers,rows){
+  function esc(v){ if(v==null)v=""; v=String(v); if(/[\",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
+  var all=[headers].concat(rows);
+  var lines=[];
+  for(var i=0;i<all.length;i++){ lines.push(all[i].map(esc).join(",")); }
+  return lines.join("\r\n")+"\r\n";
+}
+function toJSONArray(headers,rows){
+  var out=[];
+  for(var i=0;i<rows.length;i++){
+    var o={};
+    for(var j=0;j<headers.length;j++){ o[headers[j]] = (rows[i][j]!=null?rows[i][j]:""); }
+    out.push(o);
+  }
+  return out;
+}
+function download(name,text,mime){
+  var blob=new Blob([text],{type:mime});
+  var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+function exportToPDF(headers, rows, title){
+  var style = '<style>body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}h1{font-size:18px;margin:0 0 12px 0}table{width:100%;border-collapse:collapse;table-layout:auto}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}thead th{background:#f2f4f7;white-space:nowrap;}td{white-space:pre-wrap;} .meta{color:#555;font-size:11px;margin:8px 0 16px 0}@media print{ body{margin:0;} }</style>';
+  var headRow = "<tr>"+headers.map(function(h){ return "<th>"+escapeHtml(h)+"</th>"; }).join("")+"</tr>";
+  var bodyRows = rows.map(function(r){ return "<tr>"+r.map(function(v){ return "<td>"+escapeHtml(v!=null ? v : "")+"</td>"; }).join("")+"</tr>"; }).join("");
+  var html = '<!doctype html><html><head><meta charset="utf-8">'+style+'<title>'+escapeHtml(title||"Export")+'</title></head><body><h1>'+escapeHtml(title||"Export")+'</h1><div class="meta">Generated: '+new Date().toLocaleString()+'</div><table><thead>'+headRow+'</thead><tbody>'+bodyRows+'</tbody></table><script>window.onload=function(){try{window.print();}catch(e){}}<\/script></body></html>';
+  var w=window.open("", "_blank");
+  if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
 function slugify(s){ s=String(s||"export").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); return s || "export"; }
 function currentTitle(){ var el=document.getElementById("pageTitle"); var t=(el && el.textContent && el.textContent.trim()) || document.title || "DAV Export"; return t; }
-function buildExportPanel(){ /* ... unchanged ... */ }
-(function setupExportUIOnce(){ /* ... unchanged ... */ })();
-function updateExportUI(){ var btn=document.getElementById("exportBtn"); if(btn) btn.title="Export ("+EXPORT_FMT.toUpperCase()+")"; updateActionButtons(); }
-function doExport(){ /* ... unchanged ... */ }
-document.getElementById("copyBtn").addEventListener("click", async function(){ /* ... unchanged ... */ });
-function toast(msg){ var el=document.getElementById("count"); var old=el.textContent; el.textContent=msg; setTimeout(function(){ el.textContent=old; },1200); }
+function doExport(){
+  if(!HEADERS.length) return;
+  var rows = (SELECTED.size>0)
+    ? Array.from(SELECTED).sort(function(a,b){return a-b;}).map(function(i){ return ROWS[i]; })
+    : Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)")).map(function(tr){ return ROWS[+tr.dataset.index]; });
+  var filtered = filterCols(HEADERS, rows);
+  var fh = filtered.fh, fr = filtered.fr;
+  var base = slugify(currentTitle());
+  if(EXPORT_FMT==="md"){
+    var md=toMarkdown(fh,fr,currentTitle()); download(base+".md", md, "text/markdown");
+  } else if(EXPORT_FMT==="csv"){
+    var csv=toCSV(fh,fr); download(base+".csv", csv, "text/csv");
+  } else if(EXPORT_FMT==="json"){
+    var json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n"; download(base+".json", json, "application/json");
+  } else if(EXPORT_FMT==="pdf"){
+    exportToPDF(fh, fr, currentTitle());
+  }
+}
 
-/* --------------------- Loaders --------------------- */
+/* ---------------- Loaders ---------------- */
 async function loadMd(){
   var countEl=document.getElementById("count");
   ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
@@ -638,35 +950,34 @@ async function loadMd(){
   if(SRC.type==="github"){
     var items = await ghListAll(SRC.dataDir || "");
     list = items.filter(function(it){ return it.type==="file" && /\.md$/i.test(it.name); })
-                .sort(function(a,b){ return a.path.localeCompare(b.path); })
-                .map(function(it){ return {name: it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}; });
-  } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(function(u){ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url=u, path=u, sha:null}); });
+                .sort(function(a,b){ return a.path.localeCompare(b.path); });
   }
 
   for(var i=0;i<list.length;i++){
-    var name=list[i].name, url=list[i].url, path=list[i].path, sha=list[i].sha;
     try{
+      var url = list[i].download_url || ghRawUrl(list[i].path);
       var text=await fetchText(url);
       var parsed=parseFirstTable(text); if(!parsed) continue;
       if(HEADERS.length===0){
-        HEADERS=parsed.headers.length?parsed.headers:[];
-        if(HEADERS.length===0 && parsed.rows[0]) HEADERS = parsed.rows[0].map(function(_,k){ return "Column "+(k+1); });
-        COL_VISIBLE=HEADERS.map(function(){ return true; }); COL_WIDTHS=HEADERS.map(function(){ return null; });
+        HEADERS = parsed.headers.length?parsed.headers:[];
+        if(HEADERS.length===0 && parsed.rows[0]){ HEADERS = []; for(var k=0;k<parsed.rows[0].length;k++) HEADERS.push("Column "+(k+1)); }
+        COL_VISIBLE=[]; COL_WIDTHS=[];
+        for(var h=0;h<HEADERS.length;h++){ COL_VISIBLE.push(true); COL_WIDTHS.push(null); }
       }
       if(parsed.rows && parsed.rows.length){
         var row=parsed.rows[0];
-        var vals = HEADERS.map(function(_,idx){ return cleanBulletLines(row[idx]!=null?row[idx]:""); });
+        var vals=[];
+        for(var c=0;c<HEADERS.length;c++){ vals.push(cleanBulletLines(row[c]!=null?row[c]:"")); }
         ROWS.push(vals);
-        FILES.push({name:name, url:url, path:path, sha:sha});
+        FILES.push({name:list[i].name, url:url, path:list[i].path});
       }
       countEl.textContent="Loaded "+(i+1)+"/"+list.length+" (MD)";
-    }catch(e){ console.warn("Skip MD",name,e); }
+    }catch(e){ console.warn("Skip MD",list[i]&&list[i].name,e); }
   }
   if(HEADERS.length===0){
     var tbl=document.getElementById("sheet");
     var where = SRC.dataDir ? SRC.dataDir : "(repo root)";
-    tbl.innerHTML="<thead><tr><th>No MD data found in <code>"+where+"</code> (recursive, branch "+ACTIVE_BRANCH+").</th></tr></thead>";
+    tbl.innerHTML="<thead><tr><th>No MD data found in <code>"+escapeHtml(where)+"</code> (recursive, branch "+escapeHtml(ACTIVE_BRANCH)+").</th></tr></thead>";
     return;
   }
   renderTable(HEADERS, ROWS);
@@ -680,33 +991,30 @@ async function loadJson(){
   if(SRC.type==="github"){
     var items = await ghListAll(SRC.dataDir || "");
     list = items.filter(function(it){ return it.type==="file" && /\.json$/i.test(it.name); })
-                .sort(function(a,b){ return a.path.localeCompare(b.path); })
-                .map(function(it){ return {name: it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}; });
-  } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(function(u){ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url=u, path=u, sha:null}); });
+                .sort(function(a,b){ return a.path.localeCompare(b.path); });
   }
 
   for(var i=0;i<list.length;i++){
-    var name=list[i].name, url=list[i].url, path=list[i].path, sha=list[i].sha;
     try{
+      var url = list[i].download_url || ghRawUrl(list[i].path);
       var text=await fetchText(url);
       var obj=JSON.parse(text);
       var flat=flattenJson(obj);
       var vals=rowFromFlatGrowHeaders(flat);
-      ROWS.push(vals); FILES.push({name:name, url:url, path:path, sha:sha});
+      ROWS.push(vals); FILES.push({name:list[i].name, url:url, path:list[i].path});
       countEl.textContent="Loaded "+(i+1)+"/"+list.length+" (JSON)";
-    }catch(e){ console.warn("Skip JSON",name,e); }
+    }catch(e){ console.warn("Skip JSON",list[i]&&list[i].name,e); }
   }
   if(HEADERS.length===0){
     var tbl=document.getElementById("sheet");
     var where = SRC.dataDir ? SRC.dataDir : "(repo root)";
-    tbl.innerHTML="<thead><tr><th>No JSON data found in <code>"+where+"</code> (recursive, branch "+ACTIVE_BRANCH+").</th></tr></thead>";
+    tbl.innerHTML="<thead><tr><th>No JSON data found in <code>"+escapeHtml(where)+"</code> (recursive, branch "+escapeHtml(ACTIVE_BRANCH)+").</th></tr></thead>";
     return;
   }
   renderTable(HEADERS, ROWS);
 }
 
-/* --------------------- Side panel: show/hide + gutter resize --------------------- */
+/* ---------------- Side panel: show/hide + gutter resize ---------------- */
 function setSideVisibility(on){
   var mb = document.querySelector(".mainbar");
   mb.classList.toggle("side-hidden", !on);
@@ -747,32 +1055,29 @@ function setSideVisibility(on){
   }
 })();
 
-/* --------------------- Mode & boot --------------------- */
+/* ---------------- Mode & boot ---------------- */
 function applyModeUI(){
   var mdBtn=document.getElementById("modeMd");
   var jsBtn=document.getElementById("modeJson");
   if(VIEW_MODE==="json"){ mdBtn.classList.remove("active"); mdBtn.setAttribute("aria-selected","false"); jsBtn.classList.add("active"); jsBtn.setAttribute("aria-selected","true"); }
   else { jsBtn.classList.remove("active"); jsBtn.setAttribute("aria-selected","false"); mdBtn.classList.add("active"); mdBtn.setAttribute("aria-selected","true"); }
 }
-document.getElementById("modeMd").addEventListener("click",function(){ VIEW_MODE="md"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
-document.getElementById("modeJson").addEventListener("click",function(){ VIEW_MODE="json"; localStorage.setItem("viewMode",VIEW_MODE); reloadAll(); });
+document.getElementById("modeMd").addEventListener("click",function(){ VIEW_MODE="md"; try{localStorage.setItem("viewMode",VIEW_MODE);}catch(e){} reloadAll(); });
+document.getElementById("modeJson").addEventListener("click",function(){ VIEW_MODE="json"; try{localStorage.setItem("viewMode",VIEW_MODE);}catch(e){} reloadAll(); });
 
 async function reloadAll(){
   applyModeUI();
   var tbl=document.getElementById("sheet"); tbl.innerHTML="<thead><tr><th>Loading…</th></tr></thead>";
 
-  /* GUARD: if we can't detect owner/repo, don't hit the API */
   if (SRC.type==="github" && (!SRC.owner || !SRC.repo)) {
     var msg = '<thead><tr><th>Cannot auto-detect GitHub repo from URL.</th></tr></thead>'+
-              '<tbody><tr><td>Either place this page under <code>https://USER.github.io/REPO/optional/subdir/</code>'+
-              ' or provide a <code>config.js</code> that sets <code>window.DAV_CONFIG</code> with { source:{ type:"github", owner:"...", repo:"...", branch:"main", dataDir:"..." } }.</td></tr></tbody>';
+              '<tbody><tr><td>Place this page under <code>https://USER.github.io/REPO/optional/subdir/</code> or add <code>config.js</code> that sets <code>window.DAV_CONFIG</code> with { source:{ type:"github", owner:"...", repo:"...", branch:"main", dataDir:"..." } }.</td></tr></tbody>';
     tbl.innerHTML = msg;
     document.getElementById("count").textContent = "Missing owner/repo (skipped API call)";
-    console.warn("DAV: owner/repo missing. location.pathname =", location.pathname);
     return;
   }
 
-  var diag = (SRC.type==="github") ? ("owner="+SRC.owner+" repo="+SRC.repo+" dir="+(SRC.dataDir||"(root)")+" branch="+ACTIVE_BRANCH) : ("list ("+((SRC.urls||[]).length)+") urls");
+  var diag = (SRC.type==="github") ? ("owner="+SRC.owner+" repo="+SRC.repo+" dir="+(SRC.dataDir||"(root)")+" branch="+ACTIVE_BRANCH) : "list";
   document.getElementById("count").textContent = "Loading ("+diag+")…";
   try{
     if(VIEW_MODE==="json") await loadJson(); else await loadMd();
@@ -782,11 +1087,10 @@ async function reloadAll(){
   }
 }
 
-/* --------------------- Init --------------------- */
+/* ---------------- Init ---------------- */
 (function init(){
   resolveConfigSync();
-  var start = (CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md";
-  if(!localStorage.getItem("viewMode")) VIEW_MODE = start;
+  if(!localStorage.getItem("viewMode") && CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) VIEW_MODE = CFG.ui.startMode;
   reloadAll();
 })();
 </script>
