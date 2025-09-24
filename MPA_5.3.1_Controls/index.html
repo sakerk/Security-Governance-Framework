@@ -255,6 +255,19 @@
     const VIS_KEY        = (mode)=>`colVisible:${mode}`;
     const WIDTH_KEY      = (mode)=>`colWidths:${mode}`;
     const SIDE_VISIBLE_KEY = "sideVisible";
+function SIDE_ORDER_KEY(mode){ return "dav:sideOrder:"+mode; }
+function restoreSideOrder(){
+  try{
+    var raw = localStorage.getItem(SIDE_ORDER_KEY(VIEW_MODE));
+    var arr = raw ? JSON.parse(raw) : null;
+    if(Array.isArray(arr)) return arr;
+  }catch(e){}
+  return null;
+}
+function saveSideOrder(order){
+  try{ localStorage.setItem(SIDE_ORDER_KEY(VIEW_MODE), JSON.stringify(order||[])); }catch(e){}
+}
+
     const SIDE_COLS_KEY_FN  = (mode)=>`sideCols:${mode}`;
     let EXPORT_FMT = localStorage.getItem("exportFmt") || "md"; // md|csv|json|pdf
 
@@ -709,48 +722,100 @@
 
     // ---- Side panel fields dropdown (no checkboxes; toggle pill) ----
     function buildSideColsPanel(){
-  const panel = document.getElementById("sideColsPanel");
+  var panel=document.getElementById("sideColsPanel");
   if(!panel) return;
-  panel.innerHTML = "";
-  panel.onclick = (e)=>e.stopPropagation();
+  panel.innerHTML="";
+  panel.onclick=function(e){ e.stopPropagation(); };
 
-  const title = document.createElement("div");
-  title.style.fontWeight = "600";
-  title.style.marginBottom = "6px";
-  title.textContent = "Attribute Panel fields (drag to reorder):";
+  var title=document.createElement("div");
+  title.style.fontWeight="600";
+  title.style.marginBottom="6px";
+  title.textContent="Choose fields for Attribute Panel (drag to reorder):";
   panel.appendChild(title);
 
-  // Selected fields (reorderable)
-  const list = document.createElement("div");
+  var list=document.createElement("div");
   panel.appendChild(list);
 
-  let dragIndex = -1;
-  function renderSelected(){
-    list.innerHTML = "";
-    SIDE_COLS.forEach((name, i)=>{
-      const row = document.createElement("div");
-      row.className = "panelRow draggable";
+  var savedOrder = restoreSideOrder();
+  var order = Array.isArray(savedOrder) ? savedOrder.slice() : HEADERS.slice();
+
+  var present = new Set(HEADERS);
+  order = order.filter(function(n){ return present.has(n); });
+  HEADERS.forEach(function(h){ if(order.indexOf(h)===-1) order.push(h); });
+  saveSideOrder(order);
+
+  var selected = new Set(SIDE_COLS);
+  var dragIndex=-1;
+
+  function renderList(){
+    list.innerHTML="";
+    order.forEach(function(name,i){
+      var row=document.createElement("div");
+      row.className="panelRow draggable";
       row.setAttribute("draggable","true");
 
-      const handle = document.createElement("span");
-      handle.textContent = "⋮⋮";
-      handle.style.opacity = ".6";
-      handle.style.padding = "0 4px";
+      var handle=document.createElement("span");
+      handle.textContent="⋮⋮";
+      handle.style.opacity=".7";
+      handle.style.padding="0 4px";
 
-      const lbl = document.createElement("span");
-      lbl.className = "label";
-      lbl.textContent = name;
+      var lbl=document.createElement("span");
+      lbl.className="label";
+      lbl.textContent=name;
 
-      const rm = document.createElement("button");
-      rm.className = "togglebtn";
-      rm.setAttribute("aria-pressed","true");
-      rm.title = "Remove";
-      rm.addEventListener("click", ()=>{
-        SIDE_COLS = SIDE_COLS.filter(n => n !== name);
+      var btn=document.createElement("button");
+      btn.className="togglebtn";
+      var isOn = selected.has(name);
+      btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+      btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
+      btn.addEventListener("click", function(){
+        var now = btn.getAttribute("aria-pressed")!=="true";
+        btn.setAttribute("aria-pressed", now ? "true" : "false");
+        if(now){ selected.add(name); if(SIDE_COLS.indexOf(name)===-1) SIDE_COLS.push(name); }
+        else { selected.delete(name); SIDE_COLS = SIDE_COLS.filter(function(n){ return n!==name; }); }
         saveSideCols();
-        renderSelected();
         updateAttributePanel();
       });
+
+      row.addEventListener("dragstart", function(e){
+        dragIndex=i;
+        row.classList.add("dragging");
+        e.dataTransfer.effectAllowed="move";
+      });
+      row.addEventListener("dragend", function(){
+        dragIndex=-1;
+        row.classList.remove("dragging");
+        var overs = list.querySelectorAll(".drag-over");
+        for(var k=0;k<overs.length;k++){ overs[k].classList.remove("drag-over"); }
+      });
+      row.addEventListener("dragover", function(e){ e.preventDefault(); row.classList.add("drag-over"); });
+      row.addEventListener("dragleave", function(){ row.classList.remove("drag-over"); });
+      row.addEventListener("drop", function(e){
+        e.preventDefault();
+        row.classList.remove("drag-over");
+        var to=i;
+        if(dragIndex<0 || dragIndex===to) return;
+        var arr=order.slice();
+        var moved=arr.splice(dragIndex,1)[0];
+        arr.splice(to,0,moved);
+        order=arr; saveSideOrder(order);
+        renderList(); updateAttributePanel();
+      });
+
+      row.appendChild(handle);
+      row.appendChild(lbl);
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+  }
+  renderList();
+
+  var note=document.createElement("div");
+  note.className="note";
+  note.textContent="Toggle to include in the Attribute Panel. Drag to set display order.";
+  panel.appendChild(note);
+}
+);
 
       row.appendChild(handle);
       row.appendChild(lbl);
@@ -1127,12 +1192,41 @@
       return -1;
     }
     function updateAttributePanel(){
-      const cont = document.getElementById("attrContainer");
-      cont.innerHTML="";
-      const idx = pickRowIndexForSide();
-      if(idx<0){ cont.innerHTML="<div class='section'><em>Hover or select a row…</em></div>"; return; }
-
-      const indices = sideColsIndices();
+  var container=document.getElementById("attrContainer"); if(!container) return;
+  container.innerHTML="";
+  var idx=(HOVER_INDEX>=0)?HOVER_INDEX:(SELECTED.size===1?Array.from(SELECTED)[0]:-1);
+  if(idx<0||!ROWS[idx]){
+    var msg=document.createElement("div"); msg.className="section"; msg.innerHTML="<em>Hover a row to preview, or select one.</em>";
+    container.appendChild(msg); return;
+  }
+  var savedOrder = restoreSideOrder();
+  var order = Array.isArray(savedOrder) ? savedOrder.slice() : HEADERS.slice();
+  var selectedSet = new Set(SIDE_COLS);
+  var fields = order.filter(function(name){
+    return selectedSet.has(name) && HEADERS.indexOf(name)!==-1;
+  });
+  if(fields.length===0){
+    var info=document.createElement("div"); info.className="section"; info.innerHTML="<em>No fields selected for Attribute Panel.</em>";
+    container.appendChild(info); return;
+  }
+  for(var f=0; f<fields.length; f++){
+    var name=fields[f]; var ci=HEADERS.indexOf(name); if(ci<0) continue;
+    var raw=(ROWS[idx][ci]!=null?ROWS[idx][ci]:"");
+    var sec=document.createElement("div"); sec.className="section";
+    var title=document.createElement("div"); title.style.fontWeight="600"; title.style.marginBottom="4px"; title.textContent=name; sec.appendChild(title);
+    var parts=String(raw).split(/\n+/);
+    if(parts.length>1){
+      var ol=document.createElement("ol"); ol.className="attrlist";
+      for(var p=0;p<parts.length;p++){
+        var clean=parts[p].replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,"").trim();
+        if(!clean) continue; var li=document.createElement("li"); li.textContent=clean; ol.appendChild(li);
+      }
+      sec.appendChild(ol);
+    } else { var div=document.createElement("div"); div.textContent=raw; sec.appendChild(div); }
+    container.appendChild(sec);
+  }
+}
+const indices = sideColsIndices();
       if(indices.length===0){ cont.innerHTML="<div class='section'><em>No fields selected for the Attribute Panel.</em></div>"; return; }
 
       indices.forEach(i=>{
