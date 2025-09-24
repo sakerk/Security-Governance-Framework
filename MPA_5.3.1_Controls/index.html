@@ -1158,57 +1158,6 @@ function saveSideOrder(order){
     container.appendChild(sec);
   }
 }
-const indices = sideColsIndices();
-      if(indices.length===0){ cont.innerHTML="<div class='section'><em>No fields selected for the Attribute Panel.</em></div>"; return; }
-
-      indices.forEach(i=>{
-        const title = HEADERS[i];
-        const rawText = ROWS[idx][i] || "";
-        const cleaned = cleanBulletLines(rawText||"");
-        let lines = String(cleaned).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-        lines = lines.map(l => l.replace(/^\d+[.)]\s+/, "")); // avoid double numbering
-
-        const sec = document.createElement("div"); sec.className="section";
-        const strong = document.createElement("strong"); strong.textContent = title; sec.appendChild(strong);
-
-        const ol = document.createElement("ol"); ol.className="attrlist";
-        if(lines.length===0){ const li=document.createElement("li"); li.textContent="(none)"; ol.appendChild(li); }
-        else{ lines.forEach(line=>{ const li=document.createElement("li"); li.textContent=line; ol.appendChild(li); }); }
-        sec.appendChild(ol);
-        cont.appendChild(sec);
-      });
-    }
-
-    // ---- Resizable side panel + visibility toggle ----
-    (function setupSide(){
-      const gutter=document.getElementById("gutter");
-      const root=document.documentElement;
-      const mainbar=document.querySelector(".mainbar");
-      const savedW=localStorage.getItem("sideWidth"); if(savedW){ root.style.setProperty("--side-width", savedW); }
-      const savedVis=localStorage.getItem(SIDE_VISIBLE_KEY);
-      setSideVisible(savedVis!== "0"); // default visible
-
-      let dragging=false, startX=0, startW=0;
-      gutter.addEventListener("mousedown",(e)=>{ dragging=true; startX=e.clientX; startW=parseInt(getComputedStyle(root).getPropertyValue("--side-width"))||380; document.body.style.cursor="col-resize"; e.preventDefault(); });
-      window.addEventListener("mousemove",(e)=>{ if(!dragging) return; const dx = startX - e.clientX; let w = Math.min(Math.max(startW + dx, 260), window.innerWidth*0.7); root.style.setProperty("--side-width", w+"px"); });
-      window.addEventListener("mouseup",()=>{ if(!dragging) return; dragging=false; document.body.style.cursor=""; localStorage.setItem("sideWidth", getComputedStyle(root).getPropertyValue("--side-width").trim()); });
-
-      document.getElementById("toggleSideBtn").addEventListener("click", ()=>{
-        const hidden = mainbar.classList.contains("side-hidden");
-        setSideVisible(hidden); // if hidden, show; else hide
-      });
-
-      function setSideVisible(on){
-        const btn=document.getElementById("toggleSideBtn");
-        if(on){ mainbar.classList.remove("side-hidden"); btn.setAttribute("aria-pressed","true"); }
-        else { mainbar.classList.add("side-hidden"); btn.setAttribute("aria-pressed","false"); }
-        localStorage.setItem(SIDE_VISIBLE_KEY, on?"1":"0");
-      }
-      window.setSideVisible = setSideVisible;
-    })();
-
-    // ---- Boot ----
-    reloadAll();
-  </script>
+</script>
 </body>
 </html>
