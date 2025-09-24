@@ -6,19 +6,21 @@
   <title>Data Agnostic Viewer (DAV)</title>
 
   <!-- Load your config BEFORE the main script.
-       Create a file named config.js next to this index.html, with something like:
+       Create a file named config.js next to this index.html, e.g.:
+
        window.DAV_CONFIG = {
          title: "MPA 5.3.1",
          source: {
            type: "github",                 // "github" | "list"
-           owner: "sakerk",
-           repo: "Security-Governance-Framework",
+           owner: "YOUR_GH_USERNAME_OR_ORG",
+           repo: "YOUR_REPO_NAME",
            branch: "main",
-           dataDir: "MPA_5.3.1_Controls",
-           // If type === "list", provide explicit URLs:
-           // urls: [ "https://example.com/a.md", "https://example.com/b.json" ]
+           // If index.html & data files are in the SAME folder in the repo,
+           // set dataDir to that folder path RELATIVE to the repo root:
+           // e.g. "MPA_5.3.1_Controls"
+           dataDir: "MPA_5.3.1_Controls"
          },
-         permissions: { write: true },     // write to GitHub if type==="github"
+         permissions: { write: true },     // enable add/edit via GitHub API
          ui: { startMode: "md" }           // "md" or "json"
        };
   -->
@@ -122,7 +124,6 @@
     .side{width:var(--side-width);min-width:260px;max-width:70vw;border-left:1px solid var(--line);background:#0b1220;padding:10px;overflow:auto}
     .side h2{margin:0 0 8px 0;font-size:14px}
     .side .section{margin-bottom:14px}
-    /* Attribute Panel numbered list (no checkboxes) */
     .attrlist{ list-style:decimal; margin:6px 0 0 20px; padding:0; }
     .attrlist li{ padding:4px 2px; }
 
@@ -169,24 +170,21 @@
       <!-- Columns dropdown -->
       <div class="columnsWrap">
         <button id="colsBtn" class="iconbtn" title="Columns" aria-haspopup="true" aria-expanded="false">
-          <!-- funnel icon -->
           <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.75A.75.75 0 0 1 2.25 3h11.5a.75.75 0 0 1 .54 1.28L9.5 9.06v3.69a.75.75 0 0 1-1.14.64l-2-1.25a.75.75 0 0 1-.36-.64V9.06L1.71 4.28A.75.75 0 0 1 1.5 3.75Z"/></svg>
         </button>
         <div id="colsPanel" class="colsPanel" role="dialog" aria-label="Toggle table columns"></div>
       </div>
 
-      <!-- Icon controls (left group) -->
       <div class="controls">
-        <!-- Configure which columns feed the Attribute Panel -->
+        <!-- Attribute Panel fields -->
         <div class="sideFieldsWrap">
           <button id="sideColsBtn" class="iconbtn" title="Choose fields for Attribute Panel" aria-haspopup="true" aria-expanded="false">
-            <!-- sliders icon -->
             <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3a.75.75 0 0 1 0-1.5h6.5a.75.75 0 0 1 0 1.5h-6.5ZM2 4.75c0-.414.336-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 2 4.75Zm0 7.5c0-.414.336-.75.75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 2 12.25Zm11.25-4.5a.75.75 0 0 0 0-1.5H7.75a.75.75 0 0 0 0 1.5h5.5Z"/></svg>
           </button>
           <div id="sideColsPanel" class="colsPanel" role="dialog" aria-label="Choose fields for Attribute Panel"></div>
         </div>
 
-        <!-- Add (hidden if no write permission) -->
+        <!-- Add -->
         <button id="addBtn" class="iconbtn" title="Add row" aria-label="Add row">
           <svg class="icon" viewBox="0 0 16 16"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5h-5.5a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z"/></svg>
         </button>
@@ -235,12 +233,11 @@
     </div>
   </div>
 
-  <!-- Add/Edit Row Modal (icons only) -->
+  <!-- Add/Edit Row Modal -->
   <div id="addModal" class="modalBackdrop" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal" role="document">
       <header>
         <h2 id="formTitle">Add Row</h2>
-        <!-- Exit -->
         <button id="addClose" class="iconbtn" aria-label="Close">
           <svg class="icon" viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 0 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 0 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 1 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z"/></svg>
         </button>
@@ -250,7 +247,6 @@
       </div>
       <footer>
         <div id="addMsg" class="msg" aria-live="polite"></div>
-        <!-- Save -->
         <button id="addSave" class="iconbtn" title="Save">
           <svg class="icon" viewBox="0 0 16 16"><path d="M2.75 2A1.75 1.75 0 0 0 1 3.75v8.5C1 13.216 1.784 14 2.75 14h10.5A1.75 1.75 0 0 0 15 12.25V5.06c0-.464-.184-.909-.513-1.237L12.176 1.51A1.75 1.75 0 0 0 10.94 1H2.75ZM10 2.5h.94c.2 0 .39.079.53.22l2.06 2.06V12.25a.25.25 0 0 1-.25.25H2.75a.25.25 0 0 1-.25-.25v-8.5a.25.25 0 0 1 .25-.25H10V6a1 1 0 1 0 2 0V2.5Z"/></svg>
         </button>
@@ -269,8 +265,8 @@
     const titleEl = document.getElementById("pageTitle");
     if (titleEl) titleEl.textContent = CFG.title || "Data Agnostic Viewer (DAV)";
 
-    // If no config, show hint in table.
-    const hasGithubCfg = SRC.type === "github" && SRC.owner && SRC.repo && SRC.branch && SRC.dataDir;
+    // Validate config presence
+    const hasGithubCfg = SRC.type === "github" && SRC.owner && SRC.repo && SRC.branch && SRC.dataDir!=null;
     const hasListCfg   = SRC.type === "list" && Array.isArray(SRC.urls) && SRC.urls.length > 0;
     if (!hasGithubCfg && !hasListCfg) {
       const t = document.getElementById("sheet");
@@ -299,13 +295,30 @@
     // ====== Source helpers ======
     const ghContentsUrl = (dir)=>`https://api.github.com/repos/${encodeURIComponent(SRC.owner)}/${encodeURIComponent(SRC.repo)}/contents/${encodeURIComponent(dir)}?ref=${encodeURIComponent(SRC.branch)}`;
     const ghRawUrl = (path)=>`https://raw.githubusercontent.com/${SRC.owner}/${SRC.repo}/${SRC.branch}/${path}`;
+
     async function ghList(dir){
-      const url = ghContentsUrl(dir);
+      const url = ghContentsUrl(dir || "");
       let res = await fetch(url);
       if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
       if(!res.ok) throw new Error("GitHub list error "+res.status);
       return res.json();
     }
+
+    // Recursive folder scan (subdirectory scanning)
+    async function ghListAll(dir){
+      const base = (dir==null || dir==="") ? "" : String(dir);
+      const entries = await ghList(base);
+      const out = [];
+      for (const it of entries) {
+        if (it.type === "file") out.push(it);
+        else if (it.type === "dir") {
+          const subPath = it.path; // GitHub returns full relative path
+          out.push(...await ghListAll(subPath));
+        }
+      }
+      return out;
+    }
+
     async function fetchText(url){
       let res = await fetch(url);
       if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
@@ -313,6 +326,7 @@
       return res.text();
     }
     const b64 = (s)=>btoa(unescape(encodeURIComponent(s)));
+
     async function createFileInRepo(path, content, message){
       if(!CAN_WRITE) throw new Error("Write disabled by config.");
       if(!GH_TOKEN){
@@ -326,6 +340,7 @@
       if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch{}; throw new Error(msg); }
       return res.json();
     }
+
     async function updateFileInRepo(path, content, message, sha){
       if(!CAN_WRITE) throw new Error("Write disabled by config.");
       if(!GH_TOKEN){
@@ -403,7 +418,7 @@
       return out;
     }
 
-    // JSON header growth: keep first-file order, append new keys later
+    // JSON header growth
     function rowFromFlatGrowHeaders(flat){
       if(HEADERS.length===0){
         HEADERS = Object.keys(flat);
@@ -416,26 +431,23 @@
         if(!HEADERS.includes(k)) HEADERS.push(k);
       }
       if(HEADERS.length !== oldHeaders.length){
-        // expand prior rows to include any newly added headers
         ROWS = ROWS.map(r=>{
           const map={}; oldHeaders.forEach((h,i)=>map[h]=r[i]??"");
           return HEADERS.map(h=>map[h]??"");
         });
-        // also expand visibility/width arrays
         while(COL_VISIBLE.length < HEADERS.length) COL_VISIBLE.push(true);
         while(COL_WIDTHS.length  < HEADERS.length) COL_WIDTHS.push(null);
       }
       return HEADERS.map(h=>flat[h]??"");
     }
 
-    // ====== Column defaults (data agnostic: show all by default) ======
     function hideDefaultsIfFresh(){
       const saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
       if(saved) return;
       COL_VISIBLE = HEADERS.map(()=>true);
     }
 
-    // ====== Side (Attribute) Panel column config ======
+    // ====== Side (Attribute) Panel ======
     function restoreSideCols(){
       const saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
       if(saved){
@@ -443,14 +455,10 @@
       }
       SIDE_COLS = []; // data-agnostic default: none selected
     }
-    function saveSideCols(){
-      try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch{}
-    }
-    function sideColsIndices(){
-      return SIDE_COLS.map(name => HEADERS.indexOf(name)).filter(i => i>=0);
-    }
+    function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch{} }
+    function sideColsIndices(){ return SIDE_COLS.map(name => HEADERS.indexOf(name)).filter(i => i>=0); }
 
-    // ====== Table render + interactions ======
+    // ====== Table render ======
     function renderTable(headers, rows){
       const tbl = document.getElementById("sheet");
       tbl.innerHTML="";
@@ -528,14 +536,13 @@
       applyColumnVisibility(true); applyColumnWidths();
       buildIndexRows(); applySearchAndFilters(); updateCounts(); buildColumnsPanel(); buildSideColsPanel(); updateActionButtons(); updateAttributePanel(); buildExportPanel(); updateExportUI();
 
-      // Hide Add/Edit if not permitted
       if(!CAN_WRITE){
         document.getElementById("addBtn").style.display="none";
         document.getElementById("editBtn").style.display="none";
       }
     }
 
-    // ====== Selection ======
+    // ====== Selection & counts ======
     function setRowSelection(idx, on, multi){
       if(!multi){
         const prev = Array.from(SELECTED);
@@ -576,7 +583,6 @@
       if(copyBtn) copyBtn.title = EXPORT_FMT==="pdf" ? "Copy disabled for PDF" : "Copy (uses chosen export format)";
     }
 
-    // ====== Counts & search ======
     function updateCounts() {
       const total = ROWS.length;
       const visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
@@ -859,7 +865,7 @@
           h1{font-size:18px;margin:0 0 12px 0}
           table{width:100%;border-collapse:collapse;table-layout:auto}
           th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}
-          thead th{background:#f2f4f7;white-space:nowrap;} /* ensure headers do NOT wrap */
+          thead th{background:#f2f4f7;white-space:nowrap;} /* no-wrap headers */
           td{white-space:pre-wrap;}
           .meta{color:#555;font-size:11px;margin:8px 0 16px 0}
           @media print{ body{margin:0;} }
@@ -879,9 +885,8 @@
       w.document.open(); w.document.write(html); w.document.close();
     }
 
-    // Export
     function slugify(s){ return String(s||"export").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "export"; }
-    function currentTitle(){ return (titleEl && titleEl.textContent.trim()) || document.title || "DAV Export"; }
+    function currentTitle(){ const t=(titleEl && titleEl.textContent.trim()) || document.title || "DAV Export"; return t; }
     function doExport(){
       if(!HEADERS.length) return;
       const rows = selectedOrVisibleRows();
@@ -999,7 +1004,7 @@
       }
     });
 
-    // ====== Loaders (MD / JSON) ======
+    // ====== Loaders (MD / JSON) with recursive scanning ======
     async function loadMd(){
       const countEl=document.getElementById("count");
       ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
@@ -1007,10 +1012,10 @@
 
       let list=[];
       if(SRC.type==="github"){
-        const items = await ghList(SRC.dataDir);
+        const items = await ghListAll(SRC.dataDir || "");
         list = items.filter(it=>it.type==="file" && /\.md$/i.test(it.name))
-                    .sort((a,b)=>a.name.localeCompare(b.name))
-                    .map(it=>({name:it.name, url: it.download_url || ghRawUrl(`${SRC.dataDir}/${it.name}`), path: it.path || `${SRC.dataDir}/${it.name}`, sha: it.sha || null}));
+                    .sort((a,b)=>a.path.localeCompare(b.path))
+                    .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
       } else if(SRC.type==="list"){
         (SRC.urls||[]).forEach(u=>{ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
       }
@@ -1021,13 +1026,12 @@
           const text=await fetchText(url);
           const parsed=parseFirstTable(text); if(!parsed) continue;
           if(HEADERS.length===0){
-            HEADERS=parsed.headers.length?parsed.headers:[]; 
+            HEADERS=parsed.headers.length?parsed.headers:[];
             if(HEADERS.length===0 && parsed.rows[0]) HEADERS = parsed.rows[0].map((_,k)=>"Column "+(k+1));
             COL_VISIBLE=HEADERS.map(()=>true); COL_WIDTHS=HEADERS.map(()=>null);
           }
           if(parsed.rows && parsed.rows.length){
             const row=parsed.rows[0];
-            // Only use headers from first file; align by index
             const vals = HEADERS.map((_,idx)=>cleanBulletLines(row[idx]??""));
             ROWS.push(vals);
             FILES.push({name,url,path,sha});
@@ -1035,9 +1039,9 @@
           countEl.textContent=`Loading… ${i+1}/${list.length}`;
         }catch(e){ console.warn("Skip MD",name,e); }
       }
-      if(HEADERS.length===0){ // no data
+      if(HEADERS.length===0){
         const tbl=document.getElementById("sheet");
-        tbl.innerHTML="<thead><tr><th>No MD data found</th></tr></thead>";
+        tbl.innerHTML=`<thead><tr><th>No MD data found in <code>${SRC.dataDir || "(repo root)"}</code> (recursive)</th></tr></thead>`;
         return;
       }
       renderTable(HEADERS, ROWS);
@@ -1050,10 +1054,10 @@
 
       let list=[];
       if(SRC.type==="github"){
-        const items = await ghList(SRC.dataDir);
+        const items = await ghListAll(SRC.dataDir || "");
         list = items.filter(it=>it.type==="file" && /\.json$/i.test(it.name))
-                    .sort((a,b)=>a.name.localeCompare(b.name))
-                    .map(it=>({name:it.name, url: it.download_url || ghRawUrl(`${SRC.dataDir}/${it.name}`), path: it.path || `${SRC.dataDir}/${it.name}`, sha: it.sha || null}));
+                    .sort((a,b)=>a.path.localeCompare(b.path))
+                    .map(it=>({name:it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}));
       } else if(SRC.type==="list"){
         (SRC.urls||[]).forEach(u=>{ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
       }
@@ -1071,7 +1075,7 @@
       }
       if(HEADERS.length===0){
         const tbl=document.getElementById("sheet");
-        tbl.innerHTML="<thead><tr><th>No JSON data found</th></tr></thead>";
+        tbl.innerHTML=`<thead><tr><th>No JSON data found in <code>${SRC.dataDir || "(repo root)"}</code> (recursive)</th></tr></thead>`;
         return;
       }
       renderTable(HEADERS, ROWS);
