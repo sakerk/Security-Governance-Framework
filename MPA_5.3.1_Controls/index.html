@@ -255,11 +255,13 @@
     const VIS_KEY        = (mode)=>`colVisible:${mode}`;
     const WIDTH_KEY      = (mode)=>`colWidths:${mode}`;
     const SIDE_VISIBLE_KEY = "sideVisible";
+    const SIDE_COLS_KEY_FN  = (mode)=>`sideCols:${mode}`;
+// --- Persist display order for Attribute Panel (per mode) ---
 function SIDE_ORDER_KEY(mode){ return "dav:sideOrder:"+mode; }
 function restoreSideOrder(){
   try{
-    var raw = localStorage.getItem(SIDE_ORDER_KEY(VIEW_MODE));
-    var arr = raw ? JSON.parse(raw) : null;
+    const raw = localStorage.getItem(SIDE_ORDER_KEY(VIEW_MODE));
+    const arr = raw ? JSON.parse(raw) : null;
     if(Array.isArray(arr)) return arr;
   }catch(e){}
   return null;
@@ -268,7 +270,6 @@ function saveSideOrder(order){
   try{ localStorage.setItem(SIDE_ORDER_KEY(VIEW_MODE), JSON.stringify(order||[])); }catch(e){}
 }
 
-    const SIDE_COLS_KEY_FN  = (mode)=>`sideCols:${mode}`;
     let EXPORT_FMT = localStorage.getItem("exportFmt") || "md"; // md|csv|json|pdf
 
     const DEFAULT_HEADERS = [
@@ -722,84 +723,88 @@ function saveSideOrder(order){
 
     // ---- Side panel fields dropdown (no checkboxes; toggle pill) ----
     function buildSideColsPanel(){
-  var panel=document.getElementById("sideColsPanel");
+  const panel = document.getElementById("sideColsPanel");
   if(!panel) return;
-  panel.innerHTML="";
-  panel.onclick=function(e){ e.stopPropagation(); };
+  panel.innerHTML = "";
+  panel.onclick = (e)=>e.stopPropagation();
 
-  var title=document.createElement("div");
-  title.style.fontWeight="600";
-  title.style.marginBottom="6px";
-  title.textContent="Choose fields for Attribute Panel (drag to reorder):";
+  const title = document.createElement("div");
+  title.style.fontWeight = "600";
+  title.style.marginBottom = "6px";
+  title.textContent = "Choose fields for Attribute Panel (drag to reorder):";
   panel.appendChild(title);
 
-  var list=document.createElement("div");
+  const list = document.createElement("div");
   panel.appendChild(list);
 
-  var savedOrder = restoreSideOrder();
-  var order = Array.isArray(savedOrder) ? savedOrder.slice() : HEADERS.slice();
+  // Prepare ordering and selection
+  const savedOrder = restoreSideOrder();
+  let order = Array.isArray(savedOrder) ? savedOrder.slice() : HEADERS.slice();
 
-  var present = new Set(HEADERS);
-  order = order.filter(function(n){ return present.has(n); });
-  HEADERS.forEach(function(h){ if(order.indexOf(h)===-1) order.push(h); });
-  saveSideOrder(order);
+  // Normalize: keep only current headers, append any new ones
+  const present = new Set(HEADERS);
+  order = order.filter(n => present.has(n));
+  HEADERS.forEach(h => { if(order.indexOf(h)===-1) order.push(h); });
+  saveSideOrder(order); // persist normalized order
 
-  var selected = new Set(SIDE_COLS);
-  var dragIndex=-1;
+  const selected = new Set(SIDE_COLS);
+  let dragIndex = -1;
 
   function renderList(){
-    list.innerHTML="";
-    order.forEach(function(name,i){
-      var row=document.createElement("div");
-      row.className="panelRow draggable";
+    list.innerHTML = "";
+    order.forEach((name,i)=>{
+      const row = document.createElement("div");
+      row.className = "panelRow draggable";
       row.setAttribute("draggable","true");
 
-      var handle=document.createElement("span");
-      handle.textContent="⋮⋮";
-      handle.style.opacity=".7";
-      handle.style.padding="0 4px";
+      const handle = document.createElement("span");
+      handle.textContent = "⋮⋮";
+      handle.style.opacity = ".7";
+      handle.style.padding = "0 4px";
 
-      var lbl=document.createElement("span");
-      lbl.className="label";
-      lbl.textContent=name;
+      const lbl = document.createElement("span");
+      lbl.className = "label";
+      lbl.textContent = name;
 
-      var btn=document.createElement("button");
-      btn.className="togglebtn";
-      var isOn = selected.has(name);
+      const btn = document.createElement("button");
+      btn.className = "togglebtn";
+      const isOn = selected.has(name);
       btn.setAttribute("aria-pressed", isOn ? "true" : "false");
       btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
-      btn.addEventListener("click", function(){
-        var now = btn.getAttribute("aria-pressed")!=="true";
+      btn.addEventListener("click", ()=>{
+        const now = btn.getAttribute("aria-pressed")!=="true";
         btn.setAttribute("aria-pressed", now ? "true" : "false");
-        if(now){ selected.add(name); if(SIDE_COLS.indexOf(name)===-1) SIDE_COLS.push(name); }
-        else { selected.delete(name); SIDE_COLS = SIDE_COLS.filter(function(n){ return n!==name; }); }
+        if(now){ selected.add(name); if(!SIDE_COLS.includes(name)) SIDE_COLS.push(name); }
+        else { selected.delete(name); SIDE_COLS = SIDE_COLS.filter(n => n!==name); }
         saveSideCols();
         updateAttributePanel();
       });
 
-      row.addEventListener("dragstart", function(e){
-        dragIndex=i;
+      // Drag events
+      row.addEventListener("dragstart", (e)=>{
+        dragIndex = i;
         row.classList.add("dragging");
-        e.dataTransfer.effectAllowed="move";
+        e.dataTransfer.effectAllowed = "move";
       });
-      row.addEventListener("dragend", function(){
-        dragIndex=-1;
+      row.addEventListener("dragend", ()=>{
+        dragIndex = -1;
         row.classList.remove("dragging");
-        var overs = list.querySelectorAll(".drag-over");
-        for(var k=0;k<overs.length;k++){ overs[k].classList.remove("drag-over"); }
+        list.querySelectorAll(".drag-over").forEach(el=>el.classList.remove("drag-over"));
       });
-      row.addEventListener("dragover", function(e){ e.preventDefault(); row.classList.add("drag-over"); });
-      row.addEventListener("dragleave", function(){ row.classList.remove("drag-over"); });
-      row.addEventListener("drop", function(e){
+      row.addEventListener("dragover", (e)=>{ e.preventDefault(); row.classList.add("drag-over"); });
+      row.addEventListener("dragleave", ()=>{ row.classList.remove("drag-over"); });
+      row.addEventListener("drop", (e)=>{
         e.preventDefault();
         row.classList.remove("drag-over");
-        var to=i;
+        const to = i;
         if(dragIndex<0 || dragIndex===to) return;
-        var arr=order.slice();
-        var moved=arr.splice(dragIndex,1)[0];
+        const arr = order.slice();
+        const moved = arr.splice(dragIndex,1)[0];
         arr.splice(to,0,moved);
-        order=arr; saveSideOrder(order);
-        renderList(); updateAttributePanel();
+        order = arr;
+        saveSideOrder(order);
+        renderList();
+        updateAttributePanel();
       });
 
       row.appendChild(handle);
@@ -810,7 +815,7 @@ function saveSideOrder(order){
   }
   renderList();
 
-  var note=document.createElement("div");
+  const note=document.createElement("div");
   note.className="note";
   note.textContent="Toggle to include in the Attribute Panel. Drag to set display order.";
   panel.appendChild(note);
@@ -1192,37 +1197,45 @@ function saveSideOrder(order){
       return -1;
     }
     function updateAttributePanel(){
-  var container=document.getElementById("attrContainer"); if(!container) return;
-  container.innerHTML="";
-  var idx=(HOVER_INDEX>=0)?HOVER_INDEX:(SELECTED.size===1?Array.from(SELECTED)[0]:-1);
-  if(idx<0||!ROWS[idx]){
-    var msg=document.createElement("div"); msg.className="section"; msg.innerHTML="<em>Hover a row to preview, or select one.</em>";
+  const container = document.getElementById("attrContainer"); if(!container) return;
+  container.innerHTML = "";
+  const idx = (HOVER_INDEX>=0) ? HOVER_INDEX : (SELECTED.size===1 ? Array.from(SELECTED)[0] : -1);
+  if(idx<0 || !ROWS[idx]){
+    const msg = document.createElement("div"); msg.className="section"; msg.innerHTML="<em>Hover a row to preview, or select one.</em>";
     container.appendChild(msg); return;
   }
-  var savedOrder = restoreSideOrder();
-  var order = Array.isArray(savedOrder) ? savedOrder.slice() : HEADERS.slice();
-  var selectedSet = new Set(SIDE_COLS);
-  var fields = order.filter(function(name){
-    return selectedSet.has(name) && HEADERS.indexOf(name)!==-1;
-  });
+  // Use saved order if available
+  const savedOrder = restoreSideOrder();
+  let order = Array.isArray(savedOrder) ? savedOrder.slice() : HEADERS.slice();
+  // Show only toggled-on fields present in HEADERS, in that order
+  const selectedSet = new Set(SIDE_COLS);
+  const fields = order.filter(name => selectedSet.has(name) && HEADERS.indexOf(name)!==-1);
   if(fields.length===0){
-    var info=document.createElement("div"); info.className="section"; info.innerHTML="<em>No fields selected for Attribute Panel.</em>";
+    const info=document.createElement("div"); info.className="section"; info.innerHTML="<em>No fields selected for Attribute Panel.</em>";
     container.appendChild(info); return;
   }
-  for(var f=0; f<fields.length; f++){
-    var name=fields[f]; var ci=HEADERS.indexOf(name); if(ci<0) continue;
-    var raw=(ROWS[idx][ci]!=null?ROWS[idx][ci]:"");
-    var sec=document.createElement("div"); sec.className="section";
-    var title=document.createElement("div"); title.style.fontWeight="600"; title.style.marginBottom="4px"; title.textContent=name; sec.appendChild(title);
-    var parts=String(raw).split(/\n+/);
+  for(const name of fields){
+    const ci = HEADERS.indexOf(name); if(ci<0) continue;
+    const raw = (ROWS[idx][ci] != null ? ROWS[idx][ci] : "");
+    const sec = document.createElement("div"); sec.className="section";
+    const title = document.createElement("div"); title.style.fontWeight="600"; title.style.marginBottom="4px"; title.textContent=name; sec.appendChild(title);
+    const parts = String(raw).split(/\n+/);
     if(parts.length>1){
-      var ol=document.createElement("ol"); ol.className="attrlist";
-      for(var p=0;p<parts.length;p++){
-        var clean=parts[p].replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,"").trim();
-        if(!clean) continue; var li=document.createElement("li"); li.textContent=clean; ol.appendChild(li);
+      const ol=document.createElement("ol"); ol.className="attrlist";
+      for(let p=0;p<parts.length;p++){
+        const clean = parts[p]
+          .replace(/^[-*•–—]\s+/,"")
+          .replace(/^\d+[\.\)]\s+/,"")
+          .replace(/^\(\d+\)\s+/,"")
+          .replace(/^- \[[ xX]\]\s+/,"")
+          .trim();
+        if(!clean) continue;
+        const li=document.createElement("li"); li.textContent=clean; ol.appendChild(li);
       }
       sec.appendChild(ol);
-    } else { var div=document.createElement("div"); div.textContent=raw; sec.appendChild(div); }
+    } else {
+      const div=document.createElement("div"); div.textContent=raw; sec.appendChild(div);
+    }
     container.appendChild(sec);
   }
 }
