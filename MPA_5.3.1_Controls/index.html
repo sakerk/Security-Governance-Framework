@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Data Agnostic Viewer (DAV)</title>
 
-<!-- Config (kept separate) -->
+<!-- External config -->
 <script src="config.js" defer></script>
 
 <style>
@@ -46,7 +46,6 @@
   th.selCol,td.selCol{width:44px;min-width:44px;max-width:44px;text-align:center}
   input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
 
-  /* Column resizer */
   th{position:sticky;top:0;background:#0f172a}
   th .headerInner{position:relative;display:flex;gap:6px;align-items:center;padding-right:10px;cursor:pointer}
   .sortIndicator{font-size:12px;color:#9aa6b2}
@@ -92,7 +91,6 @@
   .seg button{border:0;background:#0f213c;color:#dbeafe;padding:8px 12px;cursor:pointer}
   .seg button.active{background:#13305a}
 
-  /* Selected fields list (reorder) */
   .selectedListTitle{font-weight:600;margin:4px 2px 6px 2px;font-size:13px;color:#cbd5e1}
   .selectedList{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
   .selectedItem{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px dashed #2a3a55;border-radius:8px;background:#0e1a30}
@@ -212,17 +210,17 @@
 </div>
 
 <script>
-/* ---------- Minimal config handling: use config.js or auto-detect ---------- */
-let CFG = {};
-let SRC = {};
-let ACTIVE_BRANCH = "main";
+/* ---------- Config ---------- */
+var CFG = {};
+var SRC = {};
+var ACTIVE_BRANCH = "main";
 
 function autoDetectFromLocation(){
-  const host = location.hostname;
-  const owner = host.endsWith(".github.io") ? host.replace(".github.io","") : "";
-  const parts = location.pathname.replace(/\/index\.html$/,"").replace(/\/$/,"").split("/").filter(Boolean);
-  const repo  = parts[0] || "";
-  const dataDir = parts.slice(1).join("/");
+  var host = location.hostname;
+  var owner = host.slice(-10)===".github.io" ? host.replace(".github.io","") : "";
+  var parts = location.pathname.replace(/\/index\.html$/,"").replace(/\/$/,"").split("/").filter(function(Boolean){return true;});
+  var repo  = parts[0] || "";
+  var dataDir = parts.slice(1).join("/");
   if(owner && repo){
     return {
       title: document.title || "DAV",
@@ -238,7 +236,7 @@ function resolveConfigSync(){
   if (window.DAV_CONFIG && typeof window.DAV_CONFIG === "object") {
     CFG = window.DAV_CONFIG;
   } else {
-    const auto = autoDetectFromLocation();
+    var auto = autoDetectFromLocation();
     CFG = auto || { title:"DAV", source:{type:"github", owner:"", repo:"", branch:"main", dataDir:""}, permissions:{write:false}, ui:{startMode:"md"} };
   }
   SRC = CFG.source || {};
@@ -248,41 +246,41 @@ function resolveConfigSync(){
 }
 
 /* --------------------- State --------------------- */
-let GH_TOKEN  = localStorage.getItem("ghToken") || "";
-let VIEW_MODE = localStorage.getItem("viewMode") || ((CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md");
-let EXPORT_FMT = localStorage.getItem("dav:exportFmt") || "md";
-const CAN_WRITE = function(){ return !!(CFG.permissions && CFG.permissions.write && SRC.type==="github"); };
+var GH_TOKEN  = localStorage.getItem("ghToken") || "";
+var VIEW_MODE = localStorage.getItem("viewMode") || ((CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md");
+var EXPORT_FMT = localStorage.getItem("dav:exportFmt") || "md";
+function CAN_WRITE(){ return !!(CFG.permissions && CFG.permissions.write && SRC.type==="github"); }
 
-const VIS_KEY        = function(mode){ return "dav:colVisible:"+mode; };
-const WIDTH_KEY      = function(mode){ return "dav:colWidths:"+mode; };
-const SIDE_VISIBLE_KEY = "dav:sideVisible";
-const SIDE_COLS_KEY_FN  = function(mode){ return "dav:sideCols:"+mode; };
+function VIS_KEY(mode){ return "dav:colVisible:"+mode; }
+function WIDTH_KEY(mode){ return "dav:colWidths:"+mode; }
+var SIDE_VISIBLE_KEY = "dav:sideVisible";
+function SIDE_COLS_KEY_FN(mode){ return "dav:sideCols:"+mode; }
 
-let HEADERS=[], ROWS=[], FILES=[];
-const SELECTED = new Set();
-let COL_VISIBLE=[], COL_WIDTHS=[];
-let INDEX_ROWS=[];
-let SORT_COL=-1, SORT_DIR=1;
-let EDIT_INDEX = -1;
-let FILTERS = [];
-let HOVER_INDEX = -1;
-let SIDE_COLS = [];
+var HEADERS=[], ROWS=[], FILES=[];
+var SELECTED = new Set();
+var COL_VISIBLE=[], COL_WIDTHS=[];
+var INDEX_ROWS=[];
+var SORT_COL=-1, SORT_DIR=1;
+var EDIT_INDEX = -1;
+var FILTERS = [];
+var HOVER_INDEX = -1;
+var SIDE_COLS = [];
 
 /* --------------------- GitHub helpers --------------------- */
-const ghContentsUrl = function(dir){
+function ghContentsUrl(dir){
   return "https://api.github.com/repos/"+encodeURIComponent(SRC.owner)+"/"+encodeURIComponent(SRC.repo)+"/contents/"+encodeURIComponent(dir||"")+"?ref="+encodeURIComponent(ACTIVE_BRANCH);
-};
-const ghRawUrl = function(path){ return "https://raw.githubusercontent.com/"+SRC.owner+"/"+SRC.repo+"/"+ACTIVE_BRANCH+"/"+path; };
+}
+function ghRawUrl(path){ return "https://raw.githubusercontent.com/"+SRC.owner+"/"+SRC.repo+"/"+ACTIVE_BRANCH+"/"+path; }
 
 async function ghList(dir){
-  const url = ghContentsUrl(dir);
-  let res = await fetch(url);
+  var url = ghContentsUrl(dir);
+  var res = await fetch(url);
   if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
   if(!res.ok){
     if ((ACTIVE_BRANCH==="main" || ACTIVE_BRANCH==="master")){
-      const alt = ACTIVE_BRANCH==="main" ? "master" : "main";
-      const altUrl = url.replace(/ref=[^&]+/, "ref="+encodeURIComponent(alt));
-      let res2 = await fetch(altUrl);
+      var alt = ACTIVE_BRANCH==="main" ? "master" : "main";
+      var altUrl = url.replace(/ref=[^&]+/, "ref="+encodeURIComponent(alt));
+      var res2 = await fetch(altUrl);
       if(!res2.ok && GH_TOKEN){ res2 = await fetch(altUrl, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
       if(res2.ok){ ACTIVE_BRANCH = alt; console.warn("Branch fallback to", ACTIVE_BRANCH); return res2.json(); }
     }
@@ -291,59 +289,60 @@ async function ghList(dir){
   return res.json();
 }
 async function ghListAll(dir){
-  const entries = await ghList(dir);
-  const out = [];
-  for (const it of entries) {
+  var entries = await ghList(dir);
+  var out = [];
+  for (var i=0;i<entries.length;i++){
+    var it = entries[i];
     if (it.type === "file") out.push(it);
     else if (it.type === "dir") {
-      const deeper = await ghListAll(it.path);
+      var deeper = await ghListAll(it.path);
       for (var k=0;k<deeper.length;k++) out.push(deeper[k]);
     }
   }
   return out;
 }
 async function fetchText(url){
-  let res = await fetch(url);
+  var res = await fetch(url);
   if(!res.ok && GH_TOKEN){ res = await fetch(url, {headers:{Authorization:"Bearer "+GH_TOKEN}}); }
   if(!res.ok) throw new Error("Fetch error "+res.status+" for "+url);
   return res.text();
 }
-const b64 = function(s){ return btoa(unescape(encodeURIComponent(s))); };
+function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
 
 /* --------------------- Write helpers --------------------- */
 async function createFileInRepo(path, content, message){
   if(!CAN_WRITE()) throw new Error("Write disabled by config.");
   if(!GH_TOKEN){
-    const tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
+    var tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
     if(!tok) throw new Error("Write cancelled (no token)");
     GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
   }
-  const url = "https://api.github.com/repos/"+SRC.owner+"/"+SRC.repo+"/contents/"+encodeURIComponent(path);
-  const body = { message: message||("Add "+path), content: b64(content), branch: ACTIVE_BRANCH };
-  const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
-  if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch(e){}; throw new Error(msg); }
+  var url = "https://api.github.com/repos/"+SRC.owner+"/"+SRC.repo+"/contents/"+encodeURIComponent(path);
+  var body = { message: message||("Add "+path), content: b64(content), branch: ACTIVE_BRANCH };
+  var res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
+  if(!res.ok){ var msg="GitHub write error "+res.status; try{var j=await res.json(); msg=j.message||msg;}catch(e){}; throw new Error(msg); }
   return res.json();
 }
 async function updateFileInRepo(path, content, message, sha){
   if(!CAN_WRITE()) throw new Error("Write disabled by config.");
   if(!GH_TOKEN){
-    const tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
+    var tok = prompt("GitHub token (contents:write for this repo). Stored locally.","");
     if(!tok) throw new Error("Write cancelled (no token)");
     GH_TOKEN = tok.trim(); localStorage.setItem("ghToken", GH_TOKEN);
   }
-  const url = "https://api.github.com/repos/"+SRC.owner+"/"+SRC.repo+"/contents/"+encodeURIComponent(path);
-  const body = { message: message||("Edit "+path), content: b64(content), sha: sha, branch: ACTIVE_BRANCH };
-  const res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
-  if(!res.ok){ let msg="GitHub write error "+res.status; try{const j=await res.json(); msg=j.message||msg;}catch(e){}; throw new Error(msg); }
+  var url = "https://api.github.com/repos/"+SRC.owner+"/"+SRC.repo+"/contents/"+encodeURIComponent(path);
+  var body = { message: message||("Edit "+path), content: b64(content), sha: sha, branch: ACTIVE_BRANCH };
+  var res = await fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+GH_TOKEN},"Content-Type":"application/json",body:JSON.stringify(body)});
+  if(!res.ok){ var msg="GitHub write error "+res.status; try{var j=await res.json(); msg=j.message||msg;}catch(e){}; throw new Error(msg); }
   return res.json();
 }
 
 /* --------------------- Parsing & cleanup --------------------- */
 function splitCells(line){
   var s=line.trim(); s=s.replace(/^\|/,"").replace(/\|$/,"");
-  const parts=[]; let cur="", esc=false;
-  for(let i=0;i<s.length;i++){
-    const ch=s[i];
+  var parts=[]; var cur=""; var esc=false;
+  for(var i=0;i<s.length;i++){
+    var ch=s[i];
     if(esc){ cur+=ch; esc=false; continue; }
     if(ch==="\\"){ esc=true; continue; }
     if(ch==="|"){ parts.push(cur.trim()); cur=""; continue; }
@@ -352,14 +351,16 @@ function splitCells(line){
   parts.push(cur.trim()); return parts;
 }
 function parseFirstTable(md){
-  const lines=md.split(/\r?\n/);
-  for(let i=0;i<lines.length-1;i++){
-    const headerLine=lines[i], sepLine=lines[i+1]||"";
+  var lines=md.split(/\r?\n/);
+  for(var i=0;i<lines.length-1;i++){
+    var headerLine=lines[i], sepLine=lines[i+1]||"";
     if(/^\s*\|.*\|\s*$/.test(headerLine) && /^\s*\|\s*:?-{3,}.*\|\s*$/.test(sepLine)){
-      const headers=splitCells(headerLine), rows=[];
-      for(let j=i+2;j<lines.length;j++){
-        const ln=lines[j]; if(!/^\s*\|.*\|\s*$/.test(ln)) break;
-        const cells=splitCells(ln); if(cells.every(function(c){return c.trim()==="";})) continue;
+      var headers=splitCells(headerLine), rows=[];
+      for(var j=i+2;j<lines.length;j++){
+        var ln=lines[j]; if(!/^\s*\|.*\|\s*$/.test(ln)) break;
+        var cells=splitCells(ln); 
+        var allEmpty=true; for(var c=0;c<cells.length;c++){ if(cells[c].trim()!==""){allEmpty=false;break;} }
+        if(allEmpty) continue;
         rows.push(cells);
       }
       return { headers: headers, rows: rows };
@@ -367,40 +368,32 @@ function parseFirstTable(md){
   }
   return null;
 }
-const isObj = function(v){ return v && typeof v==='object' && !Array.isArray(v); };
+function isObj(v){ return v && typeof v==='object' && !Array.isArray(v); }
 function cleanBulletLines(text){
   if(text==null) return "";
-  let raw = String(text);
-  raw = raw
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/?[^>]+>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\r/g, "");
-  const lines = raw.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  var raw = String(text);
+  raw = raw.replace(/<br\s*\/?>/gi, "\n").replace(/<\/?[^>]+>/g, "").replace(/&nbsp;/gi, " ").replace(/\r/g, "");
+  var lines = raw.split(/\n+/).map(function(s){ return s.trim(); }).filter(function(s){return !!s;});
   if(lines.length<=1) return raw.trim();
-  const cleaned = lines.map(function(l){
-    return l
-      .replace(/^[-*•–—]\s+/,"")
-      .replace(/^\d+[\.\)]\s+/,"")
-      .replace(/^\(\d+\)\s+/,"")
-      .replace(/^- \[[ xX]\]\s+/,"");
+  var cleaned = lines.map(function(l){
+    return l.replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,"");
   });
   return cleaned.map(function(l,i){ return (i+1)+". "+l; }).join("\n");
 }
 /* Flatten JSON; lift top-level "data" object keys without the "data." prefix */
 function flattenJson(obj){
-  const out={};
+  var out={};
   Object.keys(obj||{}).forEach(function(k){
-    const v = obj[k];
+    var v = obj[k];
     if(isObj(v)){
-      if(k.toLowerCase() === "data"){
+      if(String(k).toLowerCase() === "data"){
         Object.keys(v).forEach(function(k2){
-          const v2 = v[k2];
+          var v2 = v[k2];
           out[k2] = isObj(v2) ? JSON.stringify(v2) : Array.isArray(v2) ? cleanBulletLines(v2.join("\n")) : cleanBulletLines(v2);
         });
       } else {
         Object.keys(v).forEach(function(k2){
-          const v2 = v[k2];
+          var v2 = v[k2];
           out[k+"."+k2] = isObj(v2) ? JSON.stringify(v2) : Array.isArray(v2) ? cleanBulletLines(v2.join("\n")) : cleanBulletLines(v2);
         });
       }
@@ -417,58 +410,57 @@ function rowFromFlatGrowHeaders(flat){
     HEADERS = Object.keys(flat);
     COL_VISIBLE = HEADERS.map(function(){ return true; });
     COL_WIDTHS  = HEADERS.map(function(){ return null; });
-    return HEADERS.map(function(h){ return flat[h]??""; });
+    return HEADERS.map(function(h){ return (flat[h] != null ? flat[h] : ""); });
   }
-  const oldHeaders = HEADERS.slice();
+  var oldHeaders = HEADERS.slice();
   Object.keys(flat).forEach(function(k){ if(HEADERS.indexOf(k)===-1) HEADERS.push(k); });
   if(HEADERS.length !== oldHeaders.length){
     ROWS = ROWS.map(function(r){
-      const map={};
-      oldHeaders.forEach(function(h,i){ map[h]=r[i]??""; });
-      return HEADERS.map(function(h){ return map[h]??""; });
+      var map={};
+      for(var i=0;i<oldHeaders.length;i++){ var h=oldHeaders[i]; map[h]= (r[i] != null ? r[i] : ""); }
+      return HEADERS.map(function(h){ return (map[h] != null ? map[h] : ""); });
     });
     while(COL_VISIBLE.length < HEADERS.length) COL_VISIBLE.push(true);
     while(COL_WIDTHS.length  < HEADERS.length) COL_WIDTHS.push(null);
   }
-  return HEADERS.map(function(h){ return flat[h]??""; });
+  return HEADERS.map(function(h){ return (flat[h] != null ? flat[h] : ""); });
 }
 function hideDefaultsIfFresh(){
-  const saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
+  var saved = localStorage.getItem(VIS_KEY(VIEW_MODE));
   if(saved) return;
   COL_VISIBLE = HEADERS.map(function(){ return true; });
 }
 
 /* --------------------- Attribute Panel --------------------- */
 function restoreSideCols(){
-  const saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
+  var saved = localStorage.getItem(SIDE_COLS_KEY_FN(VIEW_MODE));
   if(saved){
     try{
-      const arr = JSON.parse(saved);
+      var arr = JSON.parse(saved);
       if(Array.isArray(arr)) { SIDE_COLS = arr.filter(function(h){ return HEADERS.indexOf(h)!==-1; }); return; }
     }catch(e){}
   }
-  SIDE_COLS = []; /* default to none selected now */
+  SIDE_COLS = [];
 }
 function saveSideCols(){ try{ localStorage.setItem(SIDE_COLS_KEY_FN(VIEW_MODE), JSON.stringify(SIDE_COLS)); }catch(e){} }
 
 function updateAttributePanel(){
-  const container = document.getElementById("attrContainer");
+  var container = document.getElementById("attrContainer");
   if(!container) return;
   container.innerHTML = "";
 
-  const idx = (HOVER_INDEX >= 0) ? HOVER_INDEX : (SELECTED.size === 1 ? Array.from(SELECTED)[0] : -1);
+  var idx = (HOVER_INDEX >= 0) ? HOVER_INDEX : (SELECTED.size === 1 ? Array.from(SELECTED)[0] : -1);
   if(idx < 0 || !ROWS[idx]){
-    const msg = document.createElement("div");
+    var msg = document.createElement("div");
     msg.className = "section";
     msg.innerHTML = "<em>Hover a row to preview, or select one.</em>";
     container.appendChild(msg);
     return;
   }
 
-  /* Respect explicit selection only: if none chosen, show nothing */
-  const fields = SIDE_COLS.slice();
+  var fields = SIDE_COLS.slice();
   if(fields.length === 0){
-    const info = document.createElement("div");
+    var info = document.createElement("div");
     info.className = "section";
     info.innerHTML = "<em>No fields selected for Attribute Panel.</em>";
     container.appendChild(info);
@@ -477,36 +469,32 @@ function updateAttributePanel(){
 
   for(var f=0; f<fields.length; f++){
     var name = fields[f];
-    const ci = HEADERS.indexOf(name);
+    var ci = HEADERS.indexOf(name);
     if(ci < 0) continue;
-    const raw = ROWS[idx][ci] ?? "";
+    var raw = (ROWS[idx][ci] != null ? ROWS[idx][ci] : "");
 
-    const sec = document.createElement("div");
+    var sec = document.createElement("div");
     sec.className = "section";
 
-    const title = document.createElement("div");
+    var title = document.createElement("div");
     title.style.fontWeight = "600";
     title.style.marginBottom = "4px";
     title.textContent = name;
     sec.appendChild(title);
 
-    const lines = String(raw).split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+    var lines = String(raw).split(/\n+/).map(function(s){ return s.trim(); }).filter(function(s){return !!s;});
     if(lines.length > 1){
-      const ol = document.createElement("ol");
+      var ol = document.createElement("ol");
       ol.className = "attrlist";
       lines.forEach(function(line){
-        const clean = line
-          .replace(/^[-*•–—]\s+/,"")
-          .replace(/^\d+[\.\)]\s+/,"")
-          .replace(/^\(\d+\)\s+/,"")
-          .replace(/^- \[[ xX]\]\s+/,"");
-        const li = document.createElement("li");
+        var clean = line.replace(/^[-*•–—]\s+/,"").replace(/^\d+[\.\)]\s+/,"").replace(/^\(\d+\)\s+/,"").replace(/^- \[[ xX]\]\s+/,"");
+        var li = document.createElement("li");
         li.textContent = clean;
         ol.appendChild(li);
       });
       sec.appendChild(ol);
     } else {
-      const p = document.createElement("div");
+      var p = document.createElement("div");
       p.textContent = raw;
       sec.appendChild(p);
     }
@@ -516,16 +504,15 @@ function updateAttributePanel(){
 
 /* --------------------- Side fields panel (toggle + reorder) --------------------- */
 function buildSideColsPanel(){
-  const panel=document.getElementById("sideColsPanel");
+  var panel=document.getElementById("sideColsPanel");
   panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
 
-  /* Selected list (drag to reorder) */
-  const selTitle = document.createElement("div");
+  var selTitle = document.createElement("div");
   selTitle.className = "selectedListTitle";
   selTitle.textContent = "Selected (drag to reorder):";
   panel.appendChild(selTitle);
 
-  const selList = document.createElement("div");
+  var selList = document.createElement("div");
   selList.className = "selectedList";
   panel.appendChild(selList);
 
@@ -534,19 +521,19 @@ function buildSideColsPanel(){
     selList.innerHTML = "";
     for(var i=0;i<SIDE_COLS.length;i++){
       (function(iLocal){
-        const name = SIDE_COLS[iLocal];
-        const item = document.createElement("div");
+        var name = SIDE_COLS[iLocal];
+        var item = document.createElement("div");
         item.className = "selectedItem";
         item.setAttribute("draggable","true");
         item.dataset.index = String(iLocal);
 
-        const drag = document.createElementNS("http://www.w3.org/2000/svg","svg");
+        var drag = document.createElementNS("http://www.w3.org/2000/svg","svg");
         drag.setAttribute("viewBox","0 0 16 16");
         drag.classList.add("drag");
         drag.innerHTML = '<path fill="currentColor" d="M5 3h2v2H5V3Zm4 0h2v2H9V3ZM5 7h2v2H5V7Zm4 0h2v2H9V7ZM5 11h2v2H5v-2Zm4 0h2v2H9v-2Z"/>';
         item.appendChild(drag);
 
-        const label = document.createElement("div");
+        var label = document.createElement("div");
         label.className = "name";
         label.textContent = name;
         item.appendChild(label);
@@ -555,10 +542,10 @@ function buildSideColsPanel(){
         item.addEventListener("dragover", function(e){ e.preventDefault(); });
         item.addEventListener("drop", function(e){
           e.preventDefault();
-          const to = iLocal;
+          var to = iLocal;
           if(dragFrom===-1 || dragFrom===to) return;
-          const arr = SIDE_COLS.slice();
-          const m = arr.splice(dragFrom,1)[0];
+          var arr = SIDE_COLS.slice();
+          var m = arr.splice(dragFrom,1)[0];
           arr.splice(to,0,m);
           SIDE_COLS = arr;
           saveSideCols();
@@ -572,22 +559,21 @@ function buildSideColsPanel(){
   }
   rebuildSelected();
 
-  /* Full toggle list */
-  const divider = document.createElement("div");
+  var divider = document.createElement("div");
   divider.className = "selectedListTitle";
   divider.textContent = "Available fields:";
   panel.appendChild(divider);
 
-  const chosen = new Set(SIDE_COLS);
+  var chosen = new Set(SIDE_COLS);
   HEADERS.forEach(function(h){
-    const row=document.createElement("div"); row.className="panelRow";
-    const label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
-    const btn=document.createElement("button"); btn.className="togglebtn";
-    const isOn = chosen.has(h);
+    var row=document.createElement("div"); row.className="panelRow";
+    var label=document.createElement("span"); label.className="label"; label.textContent=h||"Column";
+    var btn=document.createElement("button"); btn.className="togglebtn";
+    var isOn = chosen.has(h);
     btn.setAttribute("aria-pressed", isOn ? "true" : "false");
     btn.title = (isOn ? "Remove from" : "Add to") + " Attribute Panel";
     btn.addEventListener("click", function(){
-      const now = btn.getAttribute("aria-pressed")!=="true";
+      var now = btn.getAttribute("aria-pressed")!=="true";
       btn.setAttribute("aria-pressed", now?"true":"false");
       if(now){
         chosen.add(h);
@@ -602,74 +588,74 @@ function buildSideColsPanel(){
     row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
   });
 
-  const note=document.createElement("div"); note.className="note";
+  var note=document.createElement("div"); note.className="note";
   note.textContent="Pick which fields show on the right, and drag the selected list to set their order (saved per mode).";
   panel.appendChild(note);
 }
 (function setupSideColsUIOnce(){
-  const btn=document.getElementById("sideColsBtn"); const panel=document.getElementById("sideColsPanel");
-  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  var btn=document.getElementById("sideColsBtn"); var panel=document.getElementById("sideColsPanel");
+  btn.addEventListener("click",function(e){ e.stopPropagation(); var open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
   document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
 })();
 
-/* --------------------- Table rendering (unchanged UI) --------------------- */
+/* --------------------- Table rendering --------------------- */
 function renderTable(headers, rows){
-  const tbl = document.getElementById("sheet");
+  var tbl = document.getElementById("sheet");
   tbl.innerHTML="";
-  const colgroup=document.createElement("colgroup"); colgroup.id="colgroup";
-  const selCol=document.createElement("col"); selCol.className="col-sel"; colgroup.appendChild(selCol);
+  var colgroup=document.createElement("colgroup"); colgroup.id="colgroup";
+  var selCol=document.createElement("col"); selCol.className="col-sel"; colgroup.appendChild(selCol);
   tbl.appendChild(colgroup);
 
-  const thead=document.createElement("thead");
-  const trh=document.createElement("tr");
-  const thSel=document.createElement("th"); thSel.className="selCol";
-  const master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
+  var thead=document.createElement("thead");
+  var trh=document.createElement("tr");
+  var thSel=document.createElement("th"); thSel.className="selCol";
+  var master=document.createElement("input"); master.type="checkbox"; master.title="Select visible rows";
   master.addEventListener("change",function(){ toggleSelectVisible(master.checked,true); });
   thSel.appendChild(master); trh.appendChild(thSel);
 
   headers.forEach(function(h,i){
-    const th=document.createElement("th"); th.draggable=true; th.dataset.col=String(i);
+    var th=document.createElement("th"); th.draggable=true; th.dataset.col=String(i);
     th.style.position="sticky"; th.style.top="0";
-    const span=document.createElement("span"); span.className="headerInner"; span.textContent=h||("Column "+(i+1));
+    var span=document.createElement("span"); span.className="headerInner"; span.textContent=h||("Column "+(i+1));
     span.addEventListener("click",function(){ onSortClick(i); }); th.appendChild(span);
-    const si=document.createElement("span"); si.className="sortIndicator"; si.textContent=(SORT_COL===i?(SORT_DIR===1?"▲":"▼"):""); span.appendChild(si);
-    const handle=document.createElement("div"); handle.className="resizer";
+    var si=document.createElement("span"); si.className="sortIndicator"; si.textContent=(SORT_COL===i?(SORT_DIR===1?"▲":"▼"):""); span.appendChild(si);
+    var handle=document.createElement("div"); handle.className="resizer";
     handle.addEventListener("mousedown",function(ev){ startResize(i,ev); });
     handle.addEventListener("dblclick",function(){ autoFitColumn(i); });
     th.appendChild(handle);
     th.addEventListener("dragstart",function(ev){ th.classList.add("dragging"); ev.dataTransfer.setData("text/plain",i); });
     th.addEventListener("dragend",function(){ th.classList.remove("dragging"); });
     th.addEventListener("dragover",function(ev){ ev.preventDefault(); });
-    th.addEventListener("drop",function(ev){ ev.preventDefault(); const from=parseInt(ev.dataTransfer.getData("text/plain"),10); const to=i; if(Number.isInteger(from)&&from!==to) reorderColumns(from,to); });
+    th.addEventListener("drop",function(ev){ ev.preventDefault(); var from=parseInt(ev.dataTransfer.getData("text/plain"),10); var to=i; if(Number.isInteger(from)&&from!==to) reorderColumns(from,to); });
     trh.appendChild(th);
-    const c=document.createElement("col"); c.dataset.col=String(i); colgroup.appendChild(c);
+    var c=document.createElement("col"); c.dataset.col=String(i); colgroup.appendChild(c);
   });
   thead.appendChild(trh);
 
-  const trf=document.createElement("tr"); trf.className="filters";
-  const thfSel=document.createElement("th"); thfSel.className="selCol"; trf.appendChild(thfSel);
+  var trf=document.createElement("tr"); trf.className="filters";
+  var thfSel=document.createElement("th"); thfSel.className="selCol"; trf.appendChild(thfSel);
   FILTERS = new Array(headers.length).fill("");
   headers.forEach(function(h,i){
-    const th=document.createElement("th"); th.dataset.col=String(i);
-    const inp=document.createElement("input"); inp.type="search"; inp.placeholder="Filter…";
+    var th=document.createElement("th"); th.dataset.col=String(i);
+    var inp=document.createElement("input"); inp.type="search"; inp.placeholder="Filter…";
     inp.addEventListener("input",function(){ FILTERS[i]=inp.value.trim().toLowerCase(); applySearchAndFilters(); });
     th.appendChild(inp); trf.appendChild(th);
   });
   thead.appendChild(trf);
 
-  const tbody=document.createElement("tbody");
+  var tbody=document.createElement("tbody");
   rows.forEach(function(r,idx){
-    const tr=document.createElement("tr"); tr.dataset.index=String(idx);
-    tr.addEventListener("click",function(e){ if(e.target.tagName.toLowerCase()==="input") return; const cb=tr.querySelector('td.selCol input'); const multi=e.shiftKey; const next=!cb.checked; setRowSelection(idx, next, multi); });
+    var tr=document.createElement("tr"); tr.dataset.index=String(idx);
+    tr.addEventListener("click",function(e){ if(e.target.tagName.toLowerCase()==="input") return; var cb=tr.querySelector('td.selCol input'); var multi=e.shiftKey; var next=!cb.checked; setRowSelection(idx, next, multi); });
     tr.addEventListener("mouseenter",function(){ HOVER_INDEX=idx; updateAttributePanel(); });
     tr.addEventListener("mouseleave",function(){ HOVER_INDEX=-1; updateAttributePanel(); });
 
-    const tdSel=document.createElement("td"); tdSel.className="selCol";
-    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=SELECTED.has(idx);
+    var tdSel=document.createElement("td"); tdSel.className="selCol";
+    var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=SELECTED.has(idx);
     cb.addEventListener("click",function(e){ e.stopPropagation(); setRowSelection(idx, e.target.checked, e.shiftKey); });
     tdSel.appendChild(cb); tr.appendChild(tdSel);
 
-    r.forEach(function(v,i){ const td=document.createElement("td"); td.dataset.col=String(i); td.textContent=(v==null?"":v); tr.appendChild(td); });
+    r.forEach(function(v,i){ var td=document.createElement("td"); td.dataset.col=String(i); td.textContent=(v==null?"":v); tr.appendChild(td); });
 
     if(SELECTED.has(idx)) tr.classList.add("selected");
     tbody.appendChild(tr);
@@ -690,17 +676,17 @@ function renderTable(headers, rows){
 
 /* --------------------- Column panel --------------------- */
 function buildColumnsPanel(){
-  const panel=document.getElementById("colsPanel");
+  var panel=document.getElementById("colsPanel");
   panel.innerHTML=""; panel.addEventListener("click",function(e){ e.stopPropagation(); });
   HEADERS.forEach(function(h,i){
-    const row=document.createElement("div"); row.className="panelRow";
-    const label=document.createElement("span"); label.className="label"; label.textContent=h||("Column "+(i+1));
-    const btn=document.createElement("button"); btn.className="togglebtn";
-    const isOn = COL_VISIBLE[i] !== false;
+    var row=document.createElement("div"); row.className="panelRow";
+    var label=document.createElement("span"); label.className="label"; label.textContent=h||("Column "+(i+1));
+    var btn=document.createElement("button"); btn.className="togglebtn";
+    var isOn = COL_VISIBLE[i] !== false;
     btn.setAttribute("aria-pressed", isOn ? "true" : "false");
     btn.title = (isOn ? "Hide" : "Show") + " column";
     btn.addEventListener("click", function(){
-      const now = btn.getAttribute("aria-pressed")!=="true";
+      var now = btn.getAttribute("aria-pressed")!=="true";
       btn.setAttribute("aria-pressed", now?"true":"false");
       COL_VISIBLE[i] = now;
       applyColumnVisibility(true);
@@ -709,45 +695,45 @@ function buildColumnsPanel(){
     });
     row.appendChild(label); row.appendChild(btn); panel.appendChild(row);
   });
-  const note=document.createElement("div"); note.className="note";
+  var note=document.createElement("div"); note.className="note";
   note.textContent="Toggle column visibility. Tips: drag header edge to resize (double-click to auto-fit), drag headers to reorder, click header to sort.";
   panel.appendChild(note);
 }
 (function setupColumnsUIOnce(){
-  const btn=document.getElementById("colsBtn"); const panel=document.getElementById("colsPanel");
-  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  var btn=document.getElementById("colsBtn"); var panel=document.getElementById("colsPanel");
+  btn.addEventListener("click",function(e){ e.stopPropagation(); var open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
   document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
 })();
 
 /* --------------------- Selection/Search/Sort --------------------- */
 function setRowSelection(idx, on, multi){
   if(!multi){
-    const prev = Array.from(SELECTED);
+    var prev = Array.from(SELECTED);
     SELECTED.clear();
     prev.forEach(function(i){
-      const tr = document.querySelector('#sheet tbody tr[data-index="'+i+'"]');
-      if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
+      var tr = document.querySelector('#sheet tbody tr[data-index="'+i+'"]');
+      if(tr){ tr.classList.remove("selected"); var cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
     });
   }
-  const tr = document.querySelector('#sheet tbody tr[data-index="'+idx+'"]');
+  var tr = document.querySelector('#sheet tbody tr[data-index="'+idx+'"]');
   if(on){
     SELECTED.add(idx);
-    if(tr){ tr.classList.add("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=true; }
+    if(tr){ tr.classList.add("selected"); var cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=true; }
   } else {
     SELECTED.delete(idx);
-    if(tr){ tr.classList.remove("selected"); const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
+    if(tr){ tr.classList.remove("selected"); var cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=false; }
   }
   updateCounts(); updateActionButtons(); updateAttributePanel();
 }
 function toggleSelectVisible(on, forceMulti){
-  const visibleRows = Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)"));
+  var visibleRows = Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)"));
   if(!forceMulti){
-    if(visibleRows.length){ const idx=+visibleRows[0].dataset.index; setRowSelection(idx, true, false); }
+    if(visibleRows.length){ var idx=+visibleRows[0].dataset.index; setRowSelection(idx, true, false); }
     return;
   }
   visibleRows.forEach(function(tr){
-    const idx=+tr.dataset.index;
-    const cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=on;
+    var idx=+tr.dataset.index;
+    var cb=tr.querySelector('td.selCol input'); if(cb) cb.checked=on;
     if(on){ SELECTED.add(idx); tr.classList.add("selected"); } else { SELECTED.delete(idx); tr.classList.remove("selected"); }
   });
   updateCounts(); updateActionButtons(); updateAttributePanel();
@@ -755,51 +741,51 @@ function toggleSelectVisible(on, forceMulti){
 function updateActionButtons(){
   document.getElementById("editBtn").disabled = SELECTED.size !== 1 || !CAN_WRITE();
   document.getElementById("copyBtn").disabled = (SELECTED.size < 1) || (EXPORT_FMT === "pdf");
-  const copyBtn = document.getElementById("copyBtn");
+  var copyBtn = document.getElementById("copyBtn");
   if(copyBtn) copyBtn.title = EXPORT_FMT==="pdf" ? "Copy disabled for PDF" : "Copy (uses chosen export format)";
 }
 function updateCounts() {
-  const total = ROWS.length;
-  const visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
-  const sel = SELECTED.size;
-  const el = document.getElementById("count");
+  var total = ROWS.length;
+  var visible = document.querySelectorAll("#sheet tbody tr:not(.hide)").length;
+  var sel = SELECTED.size;
+  var el = document.getElementById("count");
   if (el) el.textContent = (visible === total ? total+" rows" : ("Showing "+visible+" of "+total)) + " • " + sel + " selected";
 }
 function buildIndexRows(){
-  const bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
+  var bodyRows=Array.from(document.querySelectorAll("#sheet tbody tr"));
   INDEX_ROWS=bodyRows.map(function(tr){
-    const texts = [];
+    var texts = [];
     tr.querySelectorAll('td[data-col]').forEach(function(td){ texts.push(td.textContent.toLowerCase()); });
     return { tr: tr, texts: texts };
   });
 }
 function applySearchAndFilters(){
-  const q = document.getElementById("q").value.trim().toLowerCase();
-  const terms = q.split(/\s+/).filter(Boolean);
+  var q = document.getElementById("q").value.trim().toLowerCase();
+  var terms = q.split(/\s+/).filter(function(s){return !!s;});
   INDEX_ROWS.forEach(function(pair){
-    const tr = pair.tr, texts = pair.texts;
-    const globalHit = terms.every(function(t){ return texts.some(function(x){ return x.includes(t); }); });
-    const perColHit = FILTERS.every(function(f,i){
+    var tr = pair.tr, texts = pair.texts;
+    var globalHit = terms.every(function(t){ return texts.some(function(x){ return x.indexOf(t)!==-1; }); });
+    var perColHit = FILTERS.every(function(f,i){
       if(!f) return true;
-      const cell = texts[i] || "";
-      return cell.includes(f);
+      var cell = texts[i] || "";
+      return cell.indexOf(f)!==-1;
     });
     tr.classList.toggle("hide", !(globalHit && perColHit));
   });
   updateCounts();
 }
 (function setupSearchOnce(){
-  const q=document.getElementById("q");
-  const debounce=function(fn,ms){ let t; return function(){ clearTimeout(t); t=setTimeout(fn,ms); }; };
+  var q=document.getElementById("q");
+  function debounce(fn,ms){ var t; return function(){ clearTimeout(t); t=setTimeout(fn,ms); }; }
   q.addEventListener("input", debounce(applySearchAndFilters,120));
 })();
 
 function onSortClick(i){
   if(SORT_COL===i) SORT_DIR=-SORT_DIR; else { SORT_COL=i; SORT_DIR=1; }
-  const zipped = ROWS.map(function(row,idx){ return { row: row, file: FILES[idx] }; });
+  var zipped = ROWS.map(function(row,idx){ return { row: row, file: FILES[idx] }; });
   zipped.sort(function(A,B){
-    const va=(A.row[i]??"").toString().toLowerCase();
-    const vb=(B.row[i]??"").toString().toLowerCase();
+    var va=(A.row[i]!=null?A.row[i]:"").toString().toLowerCase();
+    var vb=(B.row[i]!=null?B.row[i]:"").toString().toLowerCase();
     if(va<vb) return -1*SORT_DIR; if(va>vb) return 1*SORT_DIR; return 0;
   });
   ROWS = zipped.map(function(z){ return z.row; });
@@ -808,32 +794,32 @@ function onSortClick(i){
   renderTable(HEADERS, ROWS);
 }
 function reorderColumns(from,to){
-  const move=function(arr){ const x=arr.splice(from,1)[0]; arr.splice(to,0,x); };
+  function move(arr){ var x=arr.splice(from,1)[0]; arr.splice(to,0,x); }
   move(HEADERS); move(COL_VISIBLE); move(COL_WIDTHS);
   FILTERS = moveFilters(FILTERS, from, to);
-  ROWS = ROWS.map(function(r){ const x=r.slice(); const cell=x.splice(from,1)[0]; x.splice(to,0,cell); return x; });
+  ROWS = ROWS.map(function(r){ var x=r.slice(); var cell=x.splice(from,1)[0]; x.splice(to,0,cell); return x; });
   renderTable(HEADERS, ROWS);
 }
 function moveFilters(arr, from, to){
-  const x = arr.slice(); const v = x.splice(from,1)[0]; x.splice(to,0,v); return x;
+  var x = arr.slice(); var v = x.splice(from,1)[0]; x.splice(to,0,v); return x;
 }
 
 /* --------------------- Column visibility & widths --------------------- */
 function applyColumnVisibility(saveFlag){
-  const ths=document.querySelectorAll("#sheet thead th[data-col]");
-  const tds=document.querySelectorAll("#sheet tbody td[data-col]");
-  const cols=document.querySelectorAll("#colgroup col[data-col]");
-  const filtThs=document.querySelectorAll("#sheet thead tr.filters th[data-col]");
-  ths.forEach(function(th){ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
-  filtThs.forEach(function(th){ const i=+th.dataset.col; const hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
-  tds.forEach(function(td){ const i=+td.dataset.col; const hide=COL_VISIBLE[i]===false; td.classList.toggle("hidden-col", hide); });
-  cols.forEach(function(col){ const i=+col.dataset.col; const hide=COL_VISIBLE[i]===false; col.style.width = hide ? "0px" : (COL_WIDTHS[i] ? COL_WIDTHS[i]+"px" : ""); });
+  var ths=document.querySelectorAll("#sheet thead th[data-col]");
+  var tds=document.querySelectorAll("#sheet tbody td[data-col]");
+  var cols=document.querySelectorAll("#colgroup col[data-col]");
+  var filtThs=document.querySelectorAll("#sheet thead tr.filters th[data-col]");
+  ths.forEach(function(th){ var i=+th.dataset.col; var hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
+  filtThs.forEach(function(th){ var i=+th.dataset.col; var hide=COL_VISIBLE[i]===false; th.classList.toggle("hidden-col", hide); });
+  tds.forEach(function(td){ var i=+td.dataset.col; var hide=COL_VISIBLE[i]===false; td.classList.toggle("hidden-col", hide); });
+  cols.forEach(function(col){ var i=+col.dataset.col; var hide=COL_VISIBLE[i]===false; col.style.width = hide ? "0px" : (COL_WIDTHS[i] ? COL_WIDTHS[i]+"px" : ""); });
   if(saveFlag) saveColState();
 }
 function applyColumnWidths(){
-  const colgroup=document.getElementById("colgroup"); if(!colgroup) return;
+  var colgroup=document.getElementById("colgroup"); if(!colgroup) return;
   COL_WIDTHS.forEach(function(w,i){
-    let col=colgroup.querySelector('col[data-col="'+i+'"]');
+    var col=colgroup.querySelector('col[data-col="'+i+'"]');
     if(!col){ col=document.createElement("col"); col.dataset.col=String(i); colgroup.appendChild(col); }
     col.style.width = (COL_VISIBLE[i]===false) ? "0px" : (w? w+"px" : "");
   });
@@ -844,19 +830,19 @@ function saveColState(){ try{
   localStorage.setItem(WIDTH_KEY(VIEW_MODE), JSON.stringify(COL_WIDTHS));
 }catch(e){} }
 function restoreColState(){ try{
-  const vis=JSON.parse(localStorage.getItem(VIS_KEY(VIEW_MODE))||"null");
-  const wds=JSON.parse(localStorage.getItem(WIDTH_KEY(VIEW_MODE))||"null");
+  var vis=JSON.parse(localStorage.getItem(VIS_KEY(VIEW_MODE))||"null");
+  var wds=JSON.parse(localStorage.getItem(WIDTH_KEY(VIEW_MODE))||"null");
   if(Array.isArray(vis)&&vis.length===HEADERS.length) COL_VISIBLE=vis; else COL_VISIBLE=HEADERS.map(function(){ return true; });
   if(Array.isArray(wds)&&wds.length===HEADERS.length) COL_WIDTHS=wds; else COL_WIDTHS=HEADERS.map(function(){ return null; });
 }catch(e){ COL_VISIBLE=HEADERS.map(function(){ return true; }); COL_WIDTHS=HEADERS.map(function(){ return null; }); } }
 
 /* Column resizing */
-let resizeState=null;
+var resizeState=null;
 function startResize(i,ev){
   ev.preventDefault();
-  const th=document.querySelector('#sheet thead th[data-col="'+i+'"]');
-  const col=document.querySelector('#colgroup col[data-col="'+i+'"]');
-  const startX=ev.clientX, startW=th.getBoundingClientRect().width;
+  var th=document.querySelector('#sheet thead th[data-col="'+i+'"]');
+  var col=document.querySelector('#colgroup col[data-col="'+i+'"]');
+  var startX=ev.clientX, startW=th.getBoundingClientRect().width;
   resizeState={i:i,startX:startX,startW:startW,col:col};
   window.addEventListener("mousemove",onResizeMove);
   window.addEventListener("mouseup",endResize);
@@ -864,8 +850,8 @@ function startResize(i,ev){
 }
 function onResizeMove(ev){
   if(!resizeState) return;
-  const i=resizeState.i, startX=resizeState.startX, startW=resizeState.startW, col=resizeState.col;
-  const w=Math.max(60, Math.round(startW+(ev.clientX-startX)));
+  var i=resizeState.i, startX=resizeState.startX, startW=resizeState.startW, col=resizeState.col;
+  var w=Math.max(60, Math.round(startW+(ev.clientX-startX)));
   COL_WIDTHS[i]=w;
   if(col) col.style.width=w+"px";
 }
@@ -877,10 +863,10 @@ function endResize(){
   saveColState();
 }
 function autoFitColumn(i){
-  const th=document.querySelector('#sheet thead th[data-col="'+i+'"]');
-  const cells=Array.from(document.querySelectorAll('#sheet tbody td[data-col="'+i+'"]'));
-  const measure=function(el){ return Math.ceil(el.getBoundingClientRect().width); };
-  let maxW=measure(th);
+  var th=document.querySelector('#sheet thead th[data-col="'+i+'"]');
+  var cells=Array.from(document.querySelectorAll('#sheet tbody td[data-col="'+i+'"]'));
+  function measure(el){ return Math.ceil(el.getBoundingClientRect().width); }
+  var maxW=measure(th);
   cells.forEach(function(td){ maxW=Math.max(maxW, measure(td)); });
   maxW=Math.min(Math.max(80, maxW+12), 800);
   COL_WIDTHS[i]=maxW;
@@ -889,19 +875,19 @@ function autoFitColumn(i){
 
 /* --------------------- Export Panel --------------------- */
 function buildExportPanel(){
-  const panel = document.getElementById("exportPanel");
+  var panel = document.getElementById("exportPanel");
   panel.innerHTML="";
   panel.addEventListener("click",function(e){ e.stopPropagation(); });
-  const formats = [
+  var formats = [
     {key:"md",   label:"Markdown (.md)"},
     {key:"csv",  label:"CSV (.csv)"},
     {key:"json", label:"JSON (.json)"},
     {key:"pdf",  label:"PDF (print to PDF)"}
   ];
   formats.forEach(function(f){
-    const row=document.createElement("div"); row.className="panelRow";
-    const label=document.createElement("span"); label.className="label"; label.textContent=f.label;
-    const radio=document.createElement("button"); radio.className="radiobtn"; radio.setAttribute("role","menuitemradio");
+    var row=document.createElement("div"); row.className="panelRow";
+    var label=document.createElement("span"); label.className="label"; label.textContent=f.label;
+    var radio=document.createElement("button"); radio.className="radiobtn"; radio.setAttribute("role","menuitemradio");
     radio.setAttribute("aria-checked", EXPORT_FMT===f.key ? "true":"false");
     radio.title = "Choose "+f.label;
     radio.addEventListener("click", function(){
@@ -913,71 +899,71 @@ function buildExportPanel(){
     });
     row.appendChild(label); row.appendChild(radio); panel.appendChild(row);
   });
-  const footer=document.createElement("div"); footer.className="exportFooter";
-  const go=document.createElement("button"); go.className="iconbtn"; go.title="Export now";
+  var footer=document.createElement("div"); footer.className="exportFooter";
+  var go=document.createElement("button"); go.className="iconbtn"; go.title="Export now";
   go.innerHTML = '<svg class="icon" viewBox="0 0 16 16"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0V9l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5A.75.75 0 1 1 5.03 6.78L7.25 9V1.75ZM2 12.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg>';
   go.addEventListener("click", function(){ doExport(); panel.classList.remove("open"); });
   footer.appendChild(go);
   panel.appendChild(footer);
-  const note=document.createElement("div"); note.className="note";
+  var note=document.createElement("div"); note.className="note";
   note.textContent="Exports honor selection (if any), visible columns, filters, and sort.";
   panel.appendChild(note);
 }
 (function setupExportUIOnce(){
-  const btn=document.getElementById("exportBtn"); const panel=document.getElementById("exportPanel");
-  btn.addEventListener("click",function(e){ e.stopPropagation(); const open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
+  var btn=document.getElementById("exportBtn"); var panel=document.getElementById("exportPanel");
+  btn.addEventListener("click",function(e){ e.stopPropagation(); var open=panel.classList.toggle("open"); btn.setAttribute("aria-expanded", open?"true":"false"); });
   document.addEventListener("click",function(e){ if(!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove("open"); });
   buildExportPanel(); updateExportUI();
 })();
 function updateExportUI(){
-  const btn=document.getElementById("exportBtn");
+  var btn=document.getElementById("exportBtn");
   if(btn) btn.title = "Export ("+EXPORT_FMT.toUpperCase()+")";
   updateActionButtons();
 }
 
 /* --------------------- Export / Copy --------------------- */
 function visibleCols(){
-  const idxs=[];
+  var idxs=[];
   COL_VISIBLE.forEach(function(v,i){ if(v!==false) idxs.push(i); });
   return idxs;
 }
 function filterCols(headers,rows){
-  const cols=visibleCols();
+  var cols=visibleCols();
   return {
     fh: cols.map(function(i){ return headers[i]; }),
     fr: rows.map(function(r){ return cols.map(function(i){ return r[i]; }); })
   };
 }
 function toMarkdown(headers,rows,title){
-  const esc=function(v){ return (v==null?"":String(v).replace(/\|/g,"\\|")); };
-  const head="| "+headers.map(esc).join(" | ")+" |";
-  const sep ="| "+headers.map(function(){ return "---"; }).join(" | ")+" |";
-  const body=rows.map(function(r){ return "| "+r.map(esc).join(" | ")+" |"; }).join("\n");
+  function esc(v){ return (v==null?"":String(v).replace(/\|/g,"\\|")); }
+  var head="| "+headers.map(esc).join(" | ")+" |";
+  var sep ="| "+headers.map(function(){ return "---"; }).join(" | ")+" |";
+  var body=rows.map(function(r){ return "| "+r.map(esc).join(" | ")+" |"; }).join("\n");
   return (title?("# "+title+"\n\n"):"")+head+"\n"+sep+"\n"+body+"\n";
 }
 function toCSV(headers,rows){
   function esc(v){ if(v==null)v=""; v=String(v); if(/[\",\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
-  const all=[headers].concat(rows);
+  var all=[headers].concat(rows);
   return all.map(function(r){ return r.map(esc).join(","); }).join("\r\n")+"\r\n";
 }
 function toJSONArray(headers,rows){
   return rows.map(function(r){
-    const o={};
-    headers.forEach(function(h,i){ o[h]=r[i]??""; });
+    var o={};
+    headers.forEach(function(h,i){ o[h]=(r[i]!=null?r[i]:""); });
     return o;
   });
 }
 function download(name,text,mime){
-  const blob=new Blob([text],{type:mime});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+  var blob=new Blob([text],{type:mime});
+  var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
 }
 function escapeHtml(x){ return String(x).replace(/[&<>"]/g, function(s){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]; }); }
 function exportToPDF(headers, rows, title){
-  const style = '<style>body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}h1{font-size:18px;margin:0 0 12px 0}table{width:100%;border-collapse:collapse;table-layout:auto}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}thead th{background:#f2f4f7;white-space:nowrap;}td{white-space:pre-wrap;} .meta{color:#555;font-size:11px;margin:8px 0 16px 0}@media print{ body{margin:0;} }</style>';
-  const headRow = "<tr>"+headers.map(function(h){ return "<th>"+escapeHtml(h)+"</th>"; }).join("")+"</tr>";
-  const bodyRows = rows.map(function(r){ return "<tr>"+r.map(function(v){ return "<td>"+escapeHtml(v ?? "")+"</td>"; }).join("")+"</tr>"; }).join("");
-  const html = '<!doctype html><html><head><meta charset="utf-8">'+style+'<title>'+escapeHtml(title||"Export")+'</title></head><body><h1>'+escapeHtml(title||"Export")+'</h1><div class="meta">Generated: '+new Date().toLocaleString()+'</div><table><thead>'+headRow+'</thead><tbody>'+bodyRows+'</tbody></table><script>window.onload=()=>{try{window.print();}catch(e){}}<\/script></body></html>';
-  const w=window.open("", "_blank");
+  var style = '<style>body{font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#111;margin:24px;}h1{font-size:18px;margin:0 0 12px 0}table{width:100%;border-collapse:collapse;table-layout:auto}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}thead th{background:#f2f4f7;white-space:nowrap;}td{white-space:pre-wrap;} .meta{color:#555;font-size:11px;margin:8px 0 16px 0}@media print{ body{margin:0;} }</style>';
+  var headRow = "<tr>"+headers.map(function(h){ return "<th>"+escapeHtml(h)+"</th>"; }).join("")+"</tr>";
+  var bodyRows = rows.map(function(r){ return "<tr>"+r.map(function(v){ return "<td>"+escapeHtml(v!=null ? v : "")+"</td>"; }).join("")+"</tr>"; }).join("");
+  var html = '<!doctype html><html><head><meta charset="utf-8">'+style+'<title>'+escapeHtml(title||"Export")+'</title></head><body><h1>'+escapeHtml(title||"Export")+'</h1><div class="meta">Generated: '+new Date().toLocaleString()+'</div><table><thead>'+headRow+'</thead><tbody>'+bodyRows+'</tbody></table><script>window.onload=()=>{try{window.print();}catch(e){}}<\/script></body></html>';
+  var w=window.open("", "_blank");
   if(!w){ alert("Popup blocked. Please allow popups to export PDF."); return; }
   w.document.open(); w.document.write(html); w.document.close();
 }
@@ -985,65 +971,65 @@ function slugify(s){ s=String(s||"export").toLowerCase().replace(/[^a-z0-9]+/g,"
 function currentTitle(){ var el=document.getElementById("pageTitle"); var t=(el && el.textContent && el.textContent.trim()) || document.title || "DAV Export"; return t; }
 function doExport(){
   if(!HEADERS.length) return;
-  const rows = (SELECTED.size>0)
+  var rows = (SELECTED.size>0)
     ? Array.from(SELECTED).sort(function(a,b){return a-b;}).map(function(i){ return ROWS[i]; })
     : Array.from(document.querySelectorAll("#sheet tbody tr:not(.hide)")).map(function(tr){ return ROWS[+tr.dataset.index]; });
-  const filtered = filterCols(HEADERS, rows);
-  const fh = filtered.fh, fr = filtered.fr;
-  const base = slugify(currentTitle());
+  var filtered = filterCols(HEADERS, rows);
+  var fh = filtered.fh, fr = filtered.fr;
+  var base = slugify(currentTitle());
   if(EXPORT_FMT==="md"){
-    const md=toMarkdown(fh,fr,currentTitle()); download(base+".md", md, "text/markdown");
+    var md=toMarkdown(fh,fr,currentTitle()); download(base+".md", md, "text/markdown");
   } else if(EXPORT_FMT==="csv"){
-    const csv=toCSV(fh,fr); download(base+".csv", csv, "text/csv");
+    var csv=toCSV(fh,fr); download(base+".csv", csv, "text/csv");
   } else if(EXPORT_FMT==="json"){
-    const json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n"; download(base+".json", json, "application/json");
+    var json=JSON.stringify(toJSONArray(fh,fr), null, 2)+"\n"; download(base+".json", json, "application/json");
   } else if(EXPORT_FMT==="pdf"){
     exportToPDF(fh, fr, currentTitle());
   }
 }
 document.getElementById("copyBtn").addEventListener("click", async function(){
   if(!HEADERS.length || SELECTED.size<1 || EXPORT_FMT==="pdf") return;
-  const rows = Array.from(SELECTED).sort(function(a,b){return a-b;}).map(function(i){ return ROWS[i]; });
-  const filtered = filterCols(HEADERS, rows);
-  const fh = filtered.fh, fr = filtered.fr;
-  let text = "";
+  var rows = Array.from(SELECTED).sort(function(a,b){return a-b;}).map(function(i){ return ROWS[i]; });
+  var filtered = filterCols(HEADERS, rows);
+  var fh = filtered.fh, fr = filtered.fr;
+  var text = "";
   if(EXPORT_FMT==="md"){ text = toMarkdown(fh,fr,""); }
   else if(EXPORT_FMT==="csv"){ text = toCSV(fh,fr); }
-  else { const arr = toJSONArray(fh,fr); text = (arr.length===1 ? JSON.stringify(arr[0], null, 2) : JSON.stringify(arr, null, 2)); }
+  else { var arr = toJSONArray(fh,fr); text = (arr.length===1 ? JSON.stringify(arr[0], null, 2) : JSON.stringify(arr, null, 2)); }
   try{ await navigator.clipboard.writeText(text); toast("Copied "+EXPORT_FMT.toUpperCase()+" to clipboard"); }
-  catch(e){ const name = "selection."+EXPORT_FMT; const mime = EXPORT_FMT==="md" ? "text/markdown" : EXPORT_FMT==="csv" ? "text/csv" : "application/json"; download(name, text, mime); toast("Clipboard blocked — downloaded instead"); }
+  catch(e){ var name = "selection."+EXPORT_FMT; var mime = EXPORT_FMT==="md" ? "text/markdown" : EXPORT_FMT==="csv" ? "text/csv" : "application/json"; download(name, text, mime); toast("Clipboard blocked — downloaded instead"); }
 });
-function toast(msg){ const el=document.getElementById("count"); const old=el.textContent; el.textContent=msg; setTimeout(function(){ el.textContent=old; },1200); }
+function toast(msg){ var el=document.getElementById("count"); var old=el.textContent; el.textContent=msg; setTimeout(function(){ el.textContent=old; },1200); }
 
-/* --------------------- Loaders (recursive) --------------------- */
+/* --------------------- Loaders --------------------- */
 async function loadMd(){
-  const countEl=document.getElementById("count");
+  var countEl=document.getElementById("count");
   ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
   countEl.textContent="Probing GitHub (branch "+ACTIVE_BRANCH+")…";
 
-  let list=[];
+  var list=[];
   if(SRC.type==="github"){
-    const items = await ghListAll(SRC.dataDir || "");
+    var items = await ghListAll(SRC.dataDir || "");
     list = items.filter(function(it){ return it.type==="file" && /\.md$/i.test(it.name); })
                 .sort(function(a,b){ return a.path.localeCompare(b.path); })
                 .map(function(it){ return {name: it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}; });
   } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(function(u){ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url=u, path=u, sha:null}); });
+    (SRC.urls||[]).forEach(function(u){ if(/\.md$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
   }
 
-  for(let i=0;i<list.length;i++){
-    const name=list[i].name, url=list[i].url, path=list[i].path, sha=list[i].sha;
+  for(var i=0;i<list.length;i++){
+    var name=list[i].name, url=list[i].url, path=list[i].path, sha=list[i].sha;
     try{
-      const text=await fetchText(url);
-      const parsed=parseFirstTable(text); if(!parsed) continue;
+      var text=await fetchText(url);
+      var parsed=parseFirstTable(text); if(!parsed) continue;
       if(HEADERS.length===0){
         HEADERS=parsed.headers.length?parsed.headers:[];
         if(HEADERS.length===0 && parsed.rows[0]) HEADERS = parsed.rows[0].map(function(_,k){ return "Column "+(k+1); });
         COL_VISIBLE=HEADERS.map(function(){ return true; }); COL_WIDTHS=HEADERS.map(function(){ return null; });
       }
       if(parsed.rows && parsed.rows.length){
-        const row=parsed.rows[0];
-        const vals = HEADERS.map(function(_,idx){ return cleanBulletLines(row[idx]??""); });
+        var row=parsed.rows[0];
+        var vals = HEADERS.map(function(_,idx){ return cleanBulletLines(row[idx]!=null?row[idx]:""); });
         ROWS.push(vals);
         FILES.push({name:name, url:url, path:path, sha:sha});
       }
@@ -1051,70 +1037,70 @@ async function loadMd(){
     }catch(e){ console.warn("Skip MD",name,e); }
   }
   if(HEADERS.length===0){
-    const tbl=document.getElementById("sheet");
-    const where = SRC.dataDir ? SRC.dataDir : "(repo root)";
+    var tbl=document.getElementById("sheet");
+    var where = SRC.dataDir ? SRC.dataDir : "(repo root)";
     tbl.innerHTML="<thead><tr><th>No MD data found in <code>"+where+"</code> (recursive, branch "+ACTIVE_BRANCH+").</th></tr></thead>";
     return;
   }
   renderTable(HEADERS, ROWS);
 }
 async function loadJson(){
-  const countEl=document.getElementById("count");
+  var countEl=document.getElementById("count");
   ROWS=[]; HEADERS=[]; FILES=[]; SELECTED.clear(); SORT_COL=-1;
   countEl.textContent="Probing GitHub (branch "+ACTIVE_BRANCH+")…";
 
-  let list=[];
+  var list=[];
   if(SRC.type==="github"){
-    const items = await ghListAll(SRC.dataDir || "");
+    var items = await ghListAll(SRC.dataDir || "");
     list = items.filter(function(it){ return it.type==="file" && /\.json$/i.test(it.name); })
                 .sort(function(a,b){ return a.path.localeCompare(b.path); })
                 .map(function(it){ return {name: it.name, url: it.download_url || ghRawUrl(it.path), path: it.path, sha: it.sha || null}; });
   } else if(SRC.type==="list"){
-    (SRC.urls||[]).forEach(function(u){ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url=u, path=u, sha:null}); });
+    (SRC.urls||[]).forEach(function(u){ if(/\.json$/i.test(u)) list.push({name:u.split("/").pop(), url:u, path:u, sha:null}); });
   }
 
-  for(let i=0;i<list.length;i++){
-    const name=list[i].name, url=list[i].url, path=list[i].path, sha=list[i].sha;
+  for(var i=0;i<list.length;i++){
+    var name=list[i].name, url=list[i].url, path=list[i].path, sha=list[i].sha;
     try{
-      const text=await fetchText(url);
-      const obj=JSON.parse(text);
-      const flat=flattenJson(obj);
-      const vals=rowFromFlatGrowHeaders(flat);
+      var text=await fetchText(url);
+      var obj=JSON.parse(text);
+      var flat=flattenJson(obj);
+      var vals=rowFromFlatGrowHeaders(flat);
       ROWS.push(vals); FILES.push({name:name, url:url, path:path, sha:sha});
       countEl.textContent="Loaded "+(i+1)+"/"+list.length+" (JSON)";
     }catch(e){ console.warn("Skip JSON",name,e); }
   }
   if(HEADERS.length===0){
-    const tbl=document.getElementById("sheet");
-    const where = SRC.dataDir ? SRC.dataDir : "(repo root)";
+    var tbl=document.getElementById("sheet");
+    var where = SRC.dataDir ? SRC.dataDir : "(repo root)";
     tbl.innerHTML="<thead><tr><th>No JSON data found in <code>"+where+"</code> (recursive, branch "+ACTIVE_BRANCH+").</th></tr></thead>";
-    return;
+  } else {
+    renderTable(HEADERS, ROWS);
   }
-  renderTable(HEADERS, ROWS);
 }
 
 /* --------------------- Side panel: show/hide + gutter resize --------------------- */
 function setSideVisibility(on){
-  const mb = document.querySelector(".mainbar");
+  var mb = document.querySelector(".mainbar");
   mb.classList.toggle("side-hidden", !on);
-  const btn = document.getElementById("toggleSideBtn");
+  var btn = document.getElementById("toggleSideBtn");
   btn.setAttribute("aria-pressed", on ? "true" : "false");
   try{ localStorage.setItem(SIDE_VISIBLE_KEY, on ? "1":"0"); }catch(e){}
 }
 (function setupSide(){
-  const saved = localStorage.getItem(SIDE_VISIBLE_KEY);
+  var saved = localStorage.getItem(SIDE_VISIBLE_KEY);
   setSideVisibility(saved !== "0");
   document.getElementById("toggleSideBtn").addEventListener("click", function(){
-    const on = document.getElementById("toggleSideBtn").getAttribute("aria-pressed")!=="true";
+    var on = document.getElementById("toggleSideBtn").getAttribute("aria-pressed")!=="true";
     setSideVisibility(on);
   });
-  const gutter = document.getElementById("gutter");
-  let tracking = null;
+  var gutter = document.getElementById("gutter");
+  var tracking = null;
   gutter.addEventListener("mousedown",function(e){
     e.preventDefault();
-    const side = document.querySelector(".side");
-    const startX = e.clientX;
-    const startW = side.getBoundingClientRect().width;
+    var side = document.querySelector(".side");
+    var startX = e.clientX;
+    var startW = side.getBoundingClientRect().width;
     tracking = {startX:startX,startW:startW};
     document.body.style.cursor="col-resize";
     window.addEventListener("mousemove", drag);
@@ -1122,8 +1108,8 @@ function setSideVisibility(on){
   });
   function drag(e){
     if(!tracking) return;
-    const dx = tracking.startX - e.clientX;
-    const newW = Math.min(Math.max(260, tracking.startW + dx), Math.round(window.innerWidth*0.7));
+    var dx = tracking.startX - e.clientX;
+    var newW = Math.min(Math.max(260, tracking.startW + dx), Math.round(window.innerWidth*0.7));
     document.documentElement.style.setProperty("--side-width", newW+"px");
   }
   function stop(){
@@ -1136,8 +1122,8 @@ function setSideVisibility(on){
 
 /* --------------------- Mode & boot --------------------- */
 function applyModeUI(){
-  const mdBtn=document.getElementById("modeMd");
-  const jsBtn=document.getElementById("modeJson");
+  var mdBtn=document.getElementById("modeMd");
+  var jsBtn=document.getElementById("modeJson");
   if(VIEW_MODE==="json"){ mdBtn.classList.remove("active"); mdBtn.setAttribute("aria-selected","false"); jsBtn.classList.add("active"); jsBtn.setAttribute("aria-selected","true"); }
   else { jsBtn.classList.remove("active"); jsBtn.setAttribute("aria-selected","false"); mdBtn.classList.add("active"); mdBtn.setAttribute("aria-selected","true"); }
 }
@@ -1146,8 +1132,8 @@ document.getElementById("modeJson").addEventListener("click",function(){ VIEW_MO
 
 async function reloadAll(){
   applyModeUI();
-  const tbl=document.getElementById("sheet"); tbl.innerHTML="<thead><tr><th>Loading…</th></tr></thead>";
-  const diag = (SRC.type==="github") ? ("owner="+SRC.owner+" repo="+SRC.repo+" dir="+(SRC.dataDir||"(root)")+" branch="+ACTIVE_BRANCH) : ("list ("+((SRC.urls||[]).length)+") urls");
+  var tbl=document.getElementById("sheet"); tbl.innerHTML="<thead><tr><th>Loading…</th></tr></thead>";
+  var diag = (SRC.type==="github") ? ("owner="+SRC.owner+" repo="+SRC.repo+" dir="+(SRC.dataDir||"(root)")+" branch="+ACTIVE_BRANCH) : ("list ("+((SRC.urls||[]).length)+") urls");
   document.getElementById("count").textContent = "Loading ("+diag+")…";
   try{
     if(VIEW_MODE==="json") await loadJson(); else await loadMd();
@@ -1160,7 +1146,7 @@ async function reloadAll(){
 /* --------------------- Init --------------------- */
 (function init(){
   resolveConfigSync();
-  const start = (CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md";
+  var start = (CFG.ui && (CFG.ui.startMode==="json"||CFG.ui.startMode==="md")) ? CFG.ui.startMode : "md";
   if(!localStorage.getItem("viewMode")) VIEW_MODE = start;
   reloadAll();
 })();
