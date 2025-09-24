@@ -4,7 +4,7 @@ window.DAV_CONFIG = {
   ghOwner:  "sakerk",                      // e.g. "octocat"
   ghRepo:   "Security-Governance-Framework", // e.g. "my-datasets"
   ghBranch: "main",                        // e.g. "main"
-  dataDir:  "Security-Governance-Framework/MPA_5.3.1_Controls",          // folder holding .md/.json rows
+  dataDir:  "MPA_5.3.1_Controls",          // folder holding .md/.json rows
 
   // Optional: Set a page title (also used in export filenames)
   title: "MPA 5.3.1",
